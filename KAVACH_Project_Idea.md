@@ -210,6 +210,31 @@ So fusion gains a **veto**: a branch scoring below a floor rejects outright, reg
 
 **A veto is a false-reject risk, and the paper must price it.** Report the fitted floor *and* the FRR it costs, and run the ablation with vetoes disabled (`veto_thresholds={}`) so the veto's contribution is a measured quantity rather than an architectural assumption. An unmeasured veto is not a result.
 
+#### 4.5.2 The veto floor was set on an imagined scale — found while wiring the API
+
+The veto above shipped with a floor of 0.15 on the branch's [0, 1] scale, chosen by reasoning about that scale in the abstract. When the scorer and the fusion layer were finally connected end to end, it turned out **the veto could never fire.**
+
+The CSBG branch score is a length-normalised LLR squashed by a logistic with scale 2.0, so a branch score `s` means a raw LLR of `2·ln(s/(1−s))`. Three landmarks:
+
+| Branch score | Raw LLR | Reading |
+|---|---|---|
+| 0.50 | 0.00 | speaker model and background explain the probe equally well |
+| 0.35 | −1.24 | background ≈3.5× more likely — strong evidence against |
+| 0.15 | −3.47 | background ≈32× more likely |
+
+Measured on the reference corpus, an impostor who contradicts the claimed speaker in *every* measured class scores **0.29**, because the logistic compresses hard once the LLR passes −2. A genuine speaker scores 0.93. So a floor at 0.15 sat *below the impostor mode*: the mechanism was in the code, was covered by tests, and would not have fired once on a real probe.
+
+Two things made this invisible for as long as it was:
+
+- the fusion tests use hand-written branch scores (A4 was written as `csbg=0.05`), so they never asked what the scorer emits;
+- the scorer tests never look at fusion.
+
+Nothing connected the two modules, and the constant lived in the one that could not check it. `tests/test_api.py::TestVetoCalibration` now closes that gap by asserting the floor sits above a decisive impostor and well below a genuine speaker, computed by the real scorer.
+
+**The methodological point is worth a sentence in the paper, and it generalises past this project:** a threshold expressed in units of a score is only meaningful once you have measured what that score actually does. Two correct modules with a constant passed between them is exactly where this hides.
+
+The floor is now 0.35 — the point at which the background model is about 3.5× more likely than the claimed speaker's. It remains a **starting point, not a fitted value**; §4.5.1's requirement to report the fitted floor and its FRR cost is unchanged.
+
 ---
 
 ## 5. Experiments — this is what makes or breaks the paper
@@ -252,6 +277,16 @@ Sweeping *N* in A5-observed produces the same curve as the §5.3 enrolment-stabi
 > **The speech a defender needs to enrol a usable CSBG is the speech an attacker needs to steal one.**
 
 One measurement answers both questions, and which number it lands on (30 seconds? five minutes?) decides whether the defence is practical at all. If a usable CSBG takes five minutes of speech to estimate, most victims are safe from most attackers. If it takes thirty seconds, anyone with a public Instagram is exposed. **Put this curve in the paper.**
+
+Two failure modes in running this, both found while implementing it:
+
+**An eavesdropping budget larger than the corpus is not a budget.** If *N* exceeds the speech the victim has on record, the attacker was handed all of it — which is the *oracle* condition, and filing that number in the observed row overstates the realistic attacker by however much the truncation would have cost. `api.attacks` now labels the run ORACLE whenever the budget fails to bind, and says so in the run's notes. Anyone sweeping *N* must check the same thing: the curve's right-hand tail is oracle, not observed, and where it stops being observed depends on the speaker.
+
+**What the A5-observed curve actually measures is within-speaker consistency.** The attacker's estimate converges on the enrolled graph exactly as fast as the speaker is self-consistent. A speaker who says numbers in English 100% of the time is fully characterised by a handful of tokens; a speaker who does it 70% of the time needs far more speech before the estimate stabilises. So:
+
+> **The more reliably a speaker code-switches, the better the biometric works and the more cheaply it is stolen.**
+
+That tension is real, it is not obvious, and it is the most interesting thing in the A5 row. It also predicts the shape of the result: the CSBG's discriminative power and its stealability are driven by the *same* per-speaker quantity, so the per-speaker scatter of "CSBG margin" against "seconds to steal" should be positively correlated. **Plot it.** If it is, the defence has a characterisable weak population — the speakers it protects best — and naming that is worth more than a better mean.
 
 #### 5.1.3 Report attack yield next to every clone row, or the table means nothing
 
@@ -385,7 +420,13 @@ speech_processing/
 │   ├── fusion/            score calibration and logistic-regression fusion
 │   ├── attacks/           replay, splice, TTS clone, style-adaptive clone generators
 │   └── eval/              EER/minDCF/DET, ablations, fairness slices, stability curves
-├── frontend/              React + Vite + TypeScript (from Google AI Studio, then wired up)
+├── kavach/                React + Vite + TypeScript UI. `src/api/types.ts` is the
+│                          contract: `backend/api/schemas.py` mirrors it field for
+│                          field, and `tests/test_api.py` parses the .ts file and
+│                          fails the build when the two drift. TypeScript cannot
+│                          check a JSON payload at runtime, so nothing in the
+│                          frontend build catches a renamed field — it shows up as
+│                          a blank panel in a demo.
 ├── data/
 │   ├── raw/               enrolment + login recordings (gitignored)
 │   ├── attacks/           generated spoof audio (gitignored)
