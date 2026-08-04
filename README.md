@@ -14,7 +14,17 @@ The claim the whole system is built to test is one sentence:
 > a code-switching profile is hard to steal even when the voice and the secret
 > have both already been stolen.
 
-`KAVACH_Project_Idea.md` is the design document; it is the place to start.
+## Where to start
+
+| Document | What it is for |
+|---|---|
+| **[HANDOFF.md](HANDOFF.md)** | Current state, what is left, and the traps already hit. Read this first if you are picking the work up. |
+| **[PROJECT.md](PROJECT.md)** | What the system is, every design decision and why, what has been measured versus assumed, and the full session history. |
+| `KAVACH_Project_Idea.md` | The research proposal: novelty argument, experiment design, findings write-up. |
+
+**One thing to know before reading any number in this repository:** no human
+speakers have been recorded. Everything currently runs on `simulation.py`, whose
+speakers differ by construction. See PROJECT.md §4.
 
 ---
 
