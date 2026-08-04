@@ -191,7 +191,24 @@ Exact string match dies on code-mixed ASR. Replace with a three-way match agains
 
 ### 4.5 Module F — Fusion
 
-`S_final = w1·S_spk + w2·S_csbg + w3·S_know + w4·S_live`, weights from logistic regression on a dev split. Report EER for each branch alone and every fusion combination.
+`S_final = w1·S_spk + w2·S_csbg + w3·S_know`, weights from logistic regression on a dev split. Liveness is a **gate**, not a weighted term. Report EER for each branch alone and every fusion combination.
+
+#### 4.5.1 A weighted average cannot express the paper's claim — found while building
+
+This surfaced when the A4 experiment was first wired up, and it is worth a paragraph in the paper because it is not obvious.
+
+With weights (0.40, 0.30, 0.30) and a decision threshold of 0.55, an A4 attacker who fools the acoustic branch (0.85) and knows the answer (0.90) already sits at `0.4(0.85) + 0.3(0.90) = 0.61` from those two branches alone. The CSBG carries weight 0.30, so it can move the total by at most 0.30 — and it moves it *downward* only as far as its own score allows. **No CSBG score, not even exactly zero, pulls that trial below threshold.** Under plain linear fusion the CSBG is structurally incapable of stopping the one attack it exists to stop.
+
+Raising the CSBG's weight until the arithmetic works is tuning to a single adversary, and it charges the cost to genuine speakers who happen to answer tersely.
+
+The real error is a category one. The CSBG score is a **log-likelihood ratio against a background model**, so a strongly negative value is not weak support for identity — it is affirmative evidence *against* it. Averaging that into a pool of positive evidence discards its sign. This is the same mistake `liveness_is_gate` already avoids.
+
+So fusion gains a **veto**: a branch scoring below a floor rejects outright, regardless of the weighted sum. Two safeguards, both testable:
+
+- an **unavailable** branch never vetoes — a probe too short to score cannot reject anyone;
+- the floor sits far below the fusion threshold, so it fires on strong contrary evidence rather than on a merely unimpressive score.
+
+**A veto is a false-reject risk, and the paper must price it.** Report the fitted floor *and* the FRR it costs, and run the ablation with vetoes disabled (`veto_thresholds={}`) so the veto's contribution is a measured quantity rather than an architectural assumption. An unmeasured veto is not a result.
 
 ---
 
@@ -213,7 +230,51 @@ Build a threat model with five attackers and show which branches stop which:
 
 **A5 is your credibility.** A reviewer *will* ask "what if the attacker also clones the switching style?" Run it. Report it even if it partially breaks the system. Include it as an explicit limitation and as future work (adversarial CSBG hardening). Preempting the obvious attack is worth more than hiding it.
 
-*Note on TTS: verify Tamil support before committing. Coqui XTTS-v2's language list needs checking for `ta`; AI4Bharat IndicTTS and commercial multilingual TTS are fallbacks. If Tamil TTS quality is poor, that is itself a finding — "low-resource-ness as a defensive asset" (§8).*
+#### 5.1.1 The one sentence the whole table rests on
+
+> **The knowledge branch checks the fact. The CSBG checks the wrapper around it. The fact is stealable; the wrapper is the biometric.**
+
+The challenge asks "what is your mother's name?" and the *fact* is "Lakshmi" — scrapeable off a birthday post. But nobody answers a question with a bare noun. The speaker says *"en amma peru Lakshmi"* or *"my mother's name is Lakshmi"* or *"amma name Lakshmi"*, and which of those they say, reliably, across sessions, is what the CSBG measures. The attacker knows the name. They do not know the sentence.
+
+**This imposes a hard constraint on the challenge set:** a challenge answerable in one word has no wrapper and gives the CSBG nothing to measure. Questions must elicit a phrase. Report mean answer length per challenge template alongside the per-class results — a null result on a one-word challenge is a failure of the question, not of the hypothesis.
+
+#### 5.1.2 A5 splits in two, and the split is itself a result
+
+An attacker cannot read the victim's enrolled CSBG — it lives on the authentication server. They can only estimate it from speech they can overhear. So A5 runs twice:
+
+| Condition | Attacker's style source | What it answers |
+|---|---|---|
+| **A5-oracle** | Handed the victim's exact enrolled CSBG | Upper bound on attacker power. Physically unrealisable. "Is this defence breakable *in principle*?" |
+| **A5-observed** | Estimated from *N* seconds of public speech (a social-media video) | The condition a real attacker can actually reach. |
+
+Sweeping *N* in A5-observed produces the same curve as the §5.3 enrolment-stability experiment, read from the other side:
+
+> **The speech a defender needs to enrol a usable CSBG is the speech an attacker needs to steal one.**
+
+One measurement answers both questions, and which number it lands on (30 seconds? five minutes?) decides whether the defence is practical at all. If a usable CSBG takes five minutes of speech to estimate, most victims are safe from most attackers. If it takes thirty seconds, anyone with a public Instagram is exposed. **Put this curve in the paper.**
+
+#### 5.1.3 Report attack yield next to every clone row, or the table means nothing
+
+The easiest way to accidentally fake this paper's headline result: generate clones so bad that ECAPA rejects them unaided, then report "A4 rejected" as if the CSBG did it. **An attack that fails because the clone was bad is not evidence the defence works.**
+
+So: a clone counts as an A3/A4/A5 trial **only if the acoustic branch accepts it**. Clones that fail that screen are excluded from the rate and reported separately as **attack yield** — the fraction of generated clones that fooled ECAPA.
+
+"A4: 0/40 accepted" means nothing at 5% yield and everything at 90% yield.
+
+Low yield is publishable, but as a *different* claim: "open TTS cannot clone code-switched Tamil–English well enough to defeat a standard speaker verifier" is the low-resource-ness-as-defensive-asset finding (§8). It supports the framing. It is not a result about the CSBG, and the two must not be blurred.
+
+*Note on TTS: verify Tamil support before committing. Coqui XTTS-v2's language list needs checking for `ta`; AI4Bharat IndicTTS and commercial multilingual TTS are fallbacks. If Tamil TTS quality is poor, that is itself a finding — see above and §8.*
+
+#### 5.1.4 Four guards, enforced in code
+
+`attacks.suite.AttackTable.paper_ready()` refuses to certify a row that has any of:
+
+1. **simulated attacks** — a signal-processed pseudo-replay is not a replay; record through real hardware;
+2. **inadmissible clones counted as rejections** — see §5.1.3;
+3. **template-written A5** — A5 is a claim about a *capable* adversary, so its text must come from the LLM path;
+4. **too few trials** — every cell carries a 95% Wilson interval (not normal-approximation: these rates sit at 0 and 1, where the normal interval runs outside [0,1] and is simply wrong), and cells below 30 trials are flagged.
+
+Also report **per-speaker IAPMR, not just the mean.** If the full system stops every attack on 24 speakers and none on the 25th, that speaker is completely unprotected and the mean reads 96%.
 
 ### 5.2 Core verification results
 - EER / minDCF for: ECAPA alone, CSBG alone, each pairwise fusion, full fusion
