@@ -317,6 +317,18 @@ Also report **per-speaker IAPMR, not just the mean.** If the full system stops e
 - Genuine vs. impostor score distributions per branch
 - **Ablation over CSBG components:** lexical edges only / transition edges only / metrics only / full
 
+#### 5.2.1 A veto breaks the usual way of reporting operating points
+
+`eval/ablation.py` fits everything on a dev split and reports on test. Two things about it are not standard and both must be stated in the paper, because a reviewer who assumes the standard version will read the table wrong.
+
+**Trials that cross the dev/test boundary are discarded, not assigned.** An impostor trial pairing a dev speaker's *model* with a test speaker's *probe* has one foot on each side; putting it in test means the threshold was partly fitted on that model. At `dev_fraction=0.4` this drops roughly half the impostor trials. Fewer trials is the cheaper error.
+
+**"FAR at 1% FRR" does not exist for a system with a veto — report it as unattainable, not as 100%.** A veto rejects some genuine trials at *every* threshold, so it puts a hard floor under FRR. If that floor is 1.25%, no threshold reaches 1% FRR and the metric is undefined. The natural implementation returns 1.0 for "infeasible", which prints as `100.00` beside the baseline's `46.70` — and a reader compares them as measured rates, concluding fusion is catastrophic at an operating point fusion cannot occupy. It now returns NaN and renders `n/a`, with the veto count beside it.
+
+The same subtlety has a second face. A vetoed trial is one no threshold accepts, i.e. a score of −∞ — which is what makes a DET curve possible for a vetoed system at all. But the empirical curve is normally anchored at "one below the minimum score", and one below −∞ is still −∞, so every vetoed trial gets accepted at the bottom of the sweep and the floor vanishes. The anchor must be built from the lowest **finite** score. Both of these were found by writing the test that asserts the operating point is unattainable, not by reading the code.
+
+**The veto ablation needs a health warning attached to it.** Disabling the veto can *lower* EER while making the attack table worse, because EER is computed over genuine-vs-impostor trials and cannot see the attack rows. A row reading "vetoes disabled: −1.65% EER" with no context reads as "the veto is harmful". It is a trade, and §5.1 is the other half of it.
+
 ### 5.3 CSBG stability analysis (a strong secondary result)
 > **How much code-switched speech does a speaker need before their CSBG converges?**
 
