@@ -42,19 +42,53 @@ The old proposal's fatal move was scoping *out* the interesting problem. KAVACH 
 
 ---
 
-## 3. Novelty, stated in tiers (be honest in the paper)
+## 3. Novelty — verified against the literature (searched 2026-08-04)
 
-**Tier 1 — genuinely new, this is the paper's spine:**
-> **Code-switching behaviour as a soft biometric, formalised as a knowledge graph.**
-> Lexical idiolect as a speaker feature dates to Doddington's n-gram work in the NIST SRE era (~2001), and code-switching itself is heavily studied in sociolinguistics (Myers-Scotton's Matrix Language Frame model; Gambäck & Das's CMI metric). **Nobody has connected the two.** Nobody has used *where a bilingual speaker chooses to switch*, conditioned on semantic domain, as an authentication or anti-spoofing signal. That is the contribution.
+> **This section was revised after an actual literature search.** Findings below are from five targeted searches. Full source list in §13. **Read §3.4 before committing.**
 
-**Tier 2 — new in combination, defensible:**
-> **KG-grounded dynamic challenge generation.** Using an LLM to traverse a personal knowledge graph and synthesise a code-mixed challenge that (a) has an unbounded answer space, (b) requires knowledge the attacker must separately obtain, and (c) is *designed to elicit* switching in specific semantic classes so the CSBG has something to measure. The challenge is not random noise — it is an active probe of the biometric. That coupling is new.
+### 3.1 Tier 1 — SURVIVES. This is the paper's spine.
 
-**Tier 3 — solid engineering + resource contributions, and the easiest to guarantee:**
-> A code-switch-tolerant liveness matcher that survives high-WER Tamil–English ASR; a released annotated Tamil–English code-switched authentication corpus; a fairness audit of pretrained speaker embeddings on code-mixed speech; an attack suite including style-adaptive clones.
+> **Code-switching behaviour as a soft biometric for authentication and anti-spoofing.**
 
-**What we will NOT claim:** we are not proposing a new speaker-embedding architecture, not beating ASVspoof SOTA, and not claiming CSBG works as a standalone primary biometric. It is a *soft* biometric — a fusion component. Say this in the abstract. Reviewers punish overclaiming far harder than modest scope.
+Five searches across speaker verification, anti-spoofing, behavioural biometrics, and code-switching literature returned **no work using code-switching patterns as an authentication or spoof-detection signal.** The code-switching field is almost entirely ASR and language identification; the speaker-verification field is almost entirely acoustic. The gap is real.
+
+**However — an important nuance that changes how you must frame this.** The underlying premise is *already established* in the code-switching literature: it is a known and cited finding that **"code-switching is a speaker-dependent behaviour, where the frequency by which the foreign language is embedded differs across speakers."** Prior work has clustered speakers by code-switching attitude for language modelling (Zhang et al., *Code-Switching Attitude Dependent Language Modeling*).
+
+This is **good news for feasibility** — the effect you depend on is documented, so it probably works. But it means you **cannot claim to have discovered that code-switching varies by speaker.** That is known. Your claim must be narrower and sharper:
+
+> *We are the first to quantify whether speaker-dependent code-switching carries **enough** discriminative information to function as a security factor, and the first to show it survives voice-cloning attacks that defeat acoustic speaker verification.*
+
+The contribution is the **measurement and the security application**, not the observation. Frame it that way in the abstract or a reviewer will write "this is an obvious application of a known phenomenon."
+
+### 3.2 Tier 2 — **CUT THIS CLAIM. Prior art found.**
+
+> ~~KG-grounded dynamic challenge generation~~
+
+**US Patent 10,362,016 — "Dynamic knowledge-based authentication"** does essentially this: it builds a knowledge graph of a user's real-life events and generates authentication challenges from selected nodes in that graph. Also relevant: **US Patent 7,289,957**, verifying a speaker using random combinations of previously-supplied units.
+
+**Do not present KG-based challenge generation as novel.** Cite the patent, describe the module as an engineering component built on known technique, and move on. Presenting it as a contribution and having a reviewer find this patent would damage your credibility on the Tier-1 claim, which is the one that matters.
+
+**What remains defensible** is one narrow slice: the challenge is **adaptively targeted at the semantic class where this speaker is most discriminative**, closing a loop between the biometric and the probe. The patent generates challenges to test *knowledge*; you generate them to *elicit a measurable biometric signal*. That is a real difference — but it is one sentence in the paper, not a contribution bullet.
+
+### 3.3 Tier 3 — SURVIVES, and is now more important than before
+
+Code-switch-tolerant matching under high-WER Tamil–English ASR; the fairness audit; the attack suite. These are safe.
+
+**One caveat on the corpus contribution:** Microsoft/SpeechOcean released ~60 hours of code-switched speech covering Tamil-English, Telugu-English and Gujarati-English (Interspeech 2018 / MUCS shared task lineage). **Verify whether it has per-speaker labels with multiple utterances per speaker** — you need that structure, and it is not confirmed. If it does, use it and drop the "first corpus" framing (your contribution becomes the *speaker-and-switch-annotated authentication* layer). If it doesn't, your corpus contribution stands and is stronger.
+
+### 3.4 Closest structural prior art — you MUST cite and differentiate
+
+**"Modeling the Bilingual Phonological Idiolect Through a Translanguaging Lens"** builds a **graph-based idiolect model of a bilingual speaker using network science.** Graph + bilingual + idiolect — structurally the nearest thing to the CSBG that exists.
+
+It differs from KAVACH in three ways, and you should state them explicitly in Related Work:
+1. It models **phonological** variation (speech-sound substitution patterns); the CSBG models **lexical-semantic language choice** (which language for which concept class).
+2. Its purpose is descriptive/clinical (language acquisition); yours is **discriminative** (verification under attack).
+3. It does not evaluate identification, spoofing, or security at all.
+
+Being blindsided by this in review is avoidable. Cite it in your third paragraph.
+
+### 3.5 What we will NOT claim
+Not a new speaker-embedding architecture. Not beating ASVspoof SOTA. Not that CSBG works as a standalone primary biometric — it is a *soft* biometric and a fusion component. Not that KG challenge generation is new (§3.2). Reviewers punish overclaiming far harder than modest scope.
 
 ---
 
@@ -359,7 +393,28 @@ Read these before writing the intro; they define the gap you're claiming.
 - **Indic speech resources:** AI4Bharat's IndicSUPERB / IndicVoices papers.
 - **Code-switched ASR:** MUCS 2021 challenge overview and Indic code-switching ASR literature.
 
-> Do a proper literature search before you commit — specifically search for *"code-switching speaker verification"*, *"code-switching biometric"*, *"multilingual idiolect authentication"*. My belief that Tier-1 is unclaimed is a considered judgement, **not a verified search result.** If someone has already published it, you need to know in week 1, not week 7.
+### Literature search — COMPLETED 2026-08-04
+
+Five searches run across speaker verification, anti-spoofing, behavioural biometrics, code-switching, and KG-based authentication. Result: **Tier-1 claim survives; Tier-2 claim killed by patent prior art** (see §3).
+
+**Must-cite sources found, with why each matters:**
+
+| Source | Why it matters to you |
+|---|---|
+| [Doddington, *Speaker recognition based on idiolectal differences*, Eurospeech 2001](https://www.isca-archive.org/eurospeech_2001/doddington01_eurospeech.pdf) | The acknowledged ancestor. Word n-gram idiolect for speaker ID. Cite prominently and position as "we extend this to the multilingual/code-switch setting." |
+| [US Patent 10,362,016 — Dynamic knowledge-based authentication](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/10362016) | **Kills the Tier-2 claim.** KG of personal life events → generated auth challenges. Cite it, don't compete with it. |
+| [US Patent 7,289,957](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/7289957) | Random-combination challenge-response speaker verification. Confirms the *original* proposal's core was already patented. |
+| [Modeling the Bilingual Phonological Idiolect Through a Translanguaging Lens](https://pmc.ncbi.nlm.nih.gov/articles/PMC12611410/) | **Closest structural prior art.** Network-science graph of a bilingual idiolect. Differentiate explicitly (§3.4). |
+| [An Investigation of Code-Switching Attitude Dependent Language Modeling](https://www.researchgate.net/publication/236219497_An_Investigation_of_Code-Switching_Attitude_Dependent_Language_Modeling) | Establishes speakers have measurable, clusterable CS styles. Your premise — cite as motivation, not as your finding. |
+| [Modeling Topics and Sociolinguistic Variation in Code-Switched Discourse](https://arxiv.org/pdf/2512.03334) | Recent work on what conditions switching (topic, sociolinguistics). Supports your semantic-class conditioning design. |
+| [A Survey of Threats Against Voice Authentication and Anti-Spoofing Systems](https://arxiv.org/html/2508.16843v2) | Recent threat-model survey. Use to frame the attack taxonomy in §5.1. |
+| [Vulnerabilities of Audio-Based Biometric Authentication Against Deepfake Speech Synthesis](https://arxiv.org/html/2601.02914v1) | Recent evidence that cloning defeats commercial ASV. This is your motivation paragraph. |
+| [What You Read Isn't What You Hear: Linguistic Sensitivity in Deepfake Speech Detection](https://www.researchgate.net/publication/392085487_What_You_Read_Isn't_What_You_Hear_Linguistic_Sensitivity_in_Deepfake_Speech_Detection) | Shows *linguistic content* affects spoof detection — adjacent support for "linguistic signal carries security-relevant information." |
+| [ASVspoof 5](https://www.sciencedirect.com/science/article/pii/S0885230825000506) | Current anti-spoofing benchmark. Cite to position, not to compete. |
+| [SwitchLingua code-switching dataset](https://arxiv.org/html/2506.00087v1) | Large multi-ethnic CS dataset — check whether it has speaker labels you could reuse. |
+| Microsoft/SpeechOcean 60h CS corpus (Tamil-English incl.) | **Verify speaker labels.** Affects whether your corpus contribution stands (§3.3). |
+
+**Still to check yourself:** Google Scholar and the ACL Anthology directly (my searches were general web). Search `"code-switching" speaker verification`, `code-mixing biometric`, and `language choice authentication` there. Also check the [code-switching-papers reading list](https://github.com/gentaiscool/code-switching-papers) — it is comprehensive and will tell you fast if something was missed.
 
 ---
 
