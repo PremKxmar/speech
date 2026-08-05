@@ -193,6 +193,15 @@ of the project. Send it as-is. Everything in it is deliberate:
   match the language they read in.** This substitutes for §4's "ask in whichever
   language they greeted you in": with no interviewer, the *sheet* is the thing
   that models the answer, and an English-only sheet buys an English-only corpus.
+- **The language instruction is a permission, never a quota.** "Speak the way
+  you would to a friend" is the whole of it. "Please mix Tamil and English"
+  reads as a task, and a participant performing a mixture to order produces the
+  mixture they think is wanted — which is roughly the same mixture for
+  everybody. The between-speaker spread *is* the measurement, so an instruction
+  that compresses it returns a null result that says nothing about the
+  hypothesis. For the same reason nobody is asked to answer twice in two
+  languages, and a return that is 90% Tamil or 90% English is a data point, not
+  a failed recording: do not ask for it again.
 - **Public release is a separate, optional consent line.** Track-1 at SPELLL is a
   language-resources track; releasing the corpus is worth more than the CSBG
   result if the CSBG result is null. Release consent cannot be added

@@ -69,10 +69,15 @@ length from your mouth — not touching your face, not across the room.
   silence.
 - **Do not convert the files or "clean" them.** Whatever your recorder saves is
   what we want. Re-saving them loses the thing we measure.
-- **Speak the way you would to a friend.** Mix Tamil and English however it comes
-  out. Do **not** try to speak pure Tamil, and do **not** try to speak proper
-  English. There is no correct language here — switching mid-sentence is normal
-  and completely fine.
+- **Speak the way you would to a friend.** Whatever comes out is right. Do
+  **not** try to speak pure Tamil, and do **not** try to speak proper English.
+  Switching between the two mid-sentence is completely normal and you do not
+  need to think about it. There is no correct language here, and we are not
+  checking your English or your Tamil.
+
+Answer each question once, in one go. Please do not record a Tamil version and
+an English version of the same answer — one natural answer is exactly what we
+need.
 
 If you fumble a sentence, just carry on. Do not re-record. Natural speech with
 "um" and false starts is more useful to us than a clean take.
