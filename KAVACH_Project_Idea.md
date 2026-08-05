@@ -329,6 +329,22 @@ The same subtlety has a second face. A vetoed trial is one no threshold accepts,
 
 **The veto ablation needs a health warning attached to it.** Disabling the veto can *lower* EER while making the attack table worse, because EER is computed over genuine-vs-impostor trials and cannot see the attack rows. A row reading "vetoes disabled: −1.65% EER" with no context reads as "the veto is harmful". It is a trade, and §5.1 is the other half of it.
 
+#### 5.2.2 The acoustic baseline is confirmed competent on this audio — and its pilot number must not be reported
+
+The paper's central claim is that a clone defeats ECAPA and does not defeat the CSBG. That claim is only worth anything if the ECAPA baseline is a fair one, so it was checked against the real recordings as soon as the branch was wired up (`eval/branches.py`, pilot corpus, 4 speakers x 14 utterances, one session each):
+
+- **Template self-consistency 0.85-0.95** per speaker across 9 enrolment clips. This is the diagnostic worth keeping in the enrolment flow: a low value means the clips disagree about who the speaker is, which in practice is a mislabelled file or a second voice in the room. Nothing here is mislabelled.
+- **100% branch coverage** — every trial scored, no clip too short or unreadable.
+- Genuine mean 0.937, impostor mean 0.632, and **no impostor scored above the weakest genuine trial**.
+
+**That last number is not a result and must never be reported as one.** With four speakers there are 20 genuine and 60 impostor trials, drawn from one recording sitting per speaker — same phone, same room, same few minutes. Perfect separation under those conditions is the expected outcome for any competent embedder and carries no information about the system. What it does establish is that the audio path, the preprocessing and the checkpoint are all working, so a later failure to separate can be attributed to the corpus or the method rather than to plumbing. Report it, if at all, as a sanity check with the speaker count attached.
+
+The reportable version of this row needs cross-session probes and enough speakers for the EER to be stable; §5.1's headline table is where it belongs.
+
+#### 5.2.3 The answer matcher's rescaling was necessary, and is now measured
+
+`matcher.py` rescales LaBSE cosine similarity from 0.5 rather than using it raw, on the reasoning that multilingual sentence embeddings put unrelated text well above zero. Measured on the real model: `Thanjavur` vs `தஞ்சாவூர்` scores **0.862** after rescaling, and `Thanjavur` vs `kothu parotta` scores **0.0**. The cross-script match — the case none of the other three matchers can handle — survives, and the unrelated pair floors out instead of reading as a partial match. Without the rescale the second pair would have contributed a non-trivial score to every impostor trial.
+
 ### 5.3 CSBG stability analysis (a strong secondary result)
 > **How much code-switched speech does a speaker need before their CSBG converges?**
 
