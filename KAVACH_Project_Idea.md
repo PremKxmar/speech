@@ -345,6 +345,21 @@ The reportable version of this row needs cross-session probes and enough speaker
 
 `matcher.py` rescales LaBSE cosine similarity from 0.5 rather than using it raw, on the reasoning that multilingual sentence embeddings put unrelated text well above zero. Measured on the real model: `Thanjavur` vs `தஞ்சாவூர்` scores **0.862** after rescaling, and `Thanjavur` vs `kothu parotta` scores **0.0**. The cross-script match — the case none of the other three matchers can handle — survives, and the unrelated pair floors out instead of reading as a partial match. Without the rescale the second pair would have contributed a non-trivial score to every impostor trial.
 
+#### 5.2.4 The scripted pilot separates speakers for the wrong reason — measured
+
+First end-to-end run on the pilot: 4 speakers x 14 utterances, one session each, 2551 tokens tagged by `gemini-3.1-flash-lite`, zero guessed. The pipeline works. The numbers do not mean what they appear to.
+
+Tamil share of choice tokens, per speaker: **0.69, 0.03, 0.90, 0.63**. A spread of 0.87 looks like a spectacular result and is an artifact of the elicitation design. Each speaker reads a *different* script (`SpeakerRecord.script_id` A-D), and those scripts differ in language balance — speaker B's is English-dominant, with Tamil surviving only in food and festival vocabulary (`idli`, `sambar`, `poriyal`, `kuzhambu`, `Pongal`, `kolam`, `paal`). B's FUNCTION_WORD class is 0.00 Tamil over 405 tokens, which is the correct answer for someone reading English prose and tells you nothing about how they speak.
+
+So on this corpus a CSBG is a script classifier. `Corpus.reportability` already blocks any §5.1 claim on SCRIPTED provenance, and this is the magnitude of what it is blocking: separation that would otherwise look like the headline result. **Free-speech sessions are not an improvement to the corpus, they are the corpus.**
+
+Two things are worth keeping from the run anyway, because neither depends on the script:
+
+- **Word-level LID and semantic tagging work on real code-mixed Tamil ASR output.** All 21 classes populated, 0 guessed tokens over 2551.
+- **37 tokens were English that Whisper wrote in Tamil script**, recovered by the confidence override rather than recorded as Tamil choices the speaker never made: `மாணிங்` (morning), `ஏவினிங்` (evening), `நைட்டுக்கு` (night), `யூஸ்வலி` (usually), `சிக்ஸ்` (six), `தெட்டிக்கு` (thirty), `பஸ்டாப்புக்கு` (bus stop), `போன்ல` (phone), `யூஸ்` (use). They concentrate in TIME_DATE (7), ACTION_VERB (6) and QUANTITY_MEASURE (4). `kavach.inspect_corpus --translit` lists them for checking; a wrong entry there is an English label on a word genuinely spoken in Tamil, which is the same bias pointing the other way.
+
+The ASR itself came out well: `large-v3` transcripts track the reference scripts close to word for word, with four `U+FFFD` replacement characters across 56 utterances as the only visible artifact.
+
 ### 5.3 CSBG stability analysis (a strong secondary result)
 > **How much code-switched speech does a speaker need before their CSBG converges?**
 
