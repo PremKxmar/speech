@@ -39,6 +39,7 @@ backend/kavach/         the system
     api/                FastAPI layer serving the frontend
     corpus.py           recorded-speech manifest, loader, elicitation protocol
     ingest.py           returned participant folders -> validated manifest
+    annotate.py         audio -> transcripts -> tagged tokens, in the manifest
     experiments.py      one command producing every table and figure
     audio.py asr.py embedding.py matcher.py skg.py challenge.py fusion.py
 kavach/                 the frontend (Vite + React + TypeScript)
@@ -130,6 +131,23 @@ without writing anything.
 The participant's folder name never reaches the manifest. It is a first name
 sitting beside a voiceprint; `data/speakers.csv` holds the mapping and belongs
 with the consent register, not in this repository.
+
+### Annotating them
+
+```bash
+python -m kavach.annotate --manifest data/corpus_v1/manifest.json --stage asr
+ANTHROPIC_API_KEY=... python -m kavach.annotate --manifest ... --stage tag
+```
+
+Two stages because they fail differently. ASR is slow, offline and free —
+about an hour for a 25-minute corpus on CPU, saved after every utterance so a
+crash costs one file. Tagging is seconds per utterance and needs a key.
+
+**Without a key the tagging stage is not usable output.** `lid.rules` resolves
+*language* from script evidence and decides no semantic class, so every token
+lands in `SemanticClass.OTHER`, the CSBG has one class containing everything,
+and every speaker's graph is identical. The run is labelled rather than
+refused, in the report and in `Corpus.reportability()`.
 
 ### The offline evaluation
 

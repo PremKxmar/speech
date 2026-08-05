@@ -126,15 +126,25 @@ unrelated languages at code-switch boundaries), auto-detect for language (it
 keeps English in Latin script, which is what `lid.rules` reads for free), and
 `suppress_numerals` now genuinely suppresses numerals.
 
-What is left is the pass itself: run ASR over the ingested corpus, then
-`lid.pipeline` over the transcripts, and write the tokens back into the
-manifest. `PipelineStats.is_corpus_grade` is the gate — it is False if any
-token was guessed, which needs an LLM key for the semantic-class stage.
+`annotate.py` does the pass. Stage 1 (ASR) is built and runs. **Stage 2 needs
+`ANTHROPIC_API_KEY` and nothing downstream works without it** — `lid.rules`
+decides no semantic class, so a rules-only pass puts every token in
+`SemanticClass.OTHER`, the CSBG has one class containing everything, and every
+speaker's graph is identical. This is the single blocking dependency for a
+first number.
 
-For a scripted speaker the reference transcript is already in the manifest, so
-ASR can be scored against it rather than trusted. That WER is a result in its
-own right: word-level LID accuracy on code-mixed Tamil–English is the Track-1
-contribution and does not depend on the CSBG separating anybody.
+**WER against the read-speech scripts is not computable, and that is a finding
+rather than a gap.** The scripts romanise Tamil because participants read them
+aloud; Whisper writes Tamil in Tamil script. No Tamil word can align, so the
+WER is pinned above 100% (measured: 281%, 221%, 201%) and describes an
+orthography mismatch. Restricting to Latin tokens does *not* rescue it —
+romanised Tamil is Latin, so the filter strips nothing from the reference and
+all the Tamil from the hypothesis; that scored 96% and looked like a result.
+`annotate.transcripts_are_comparable` refuses both and `asr_wer` stays None.
+
+The Track-1 contribution therefore needs **hand-corrected transcripts on a
+subset**. That is cheap here precisely because the reference exists: a human
+corrects a transcript instead of producing one. Budget it as a real task.
 
 ### 4. Smaller items
 
