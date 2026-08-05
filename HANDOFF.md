@@ -109,14 +109,32 @@ impostor CSBG scores separate at all on real speakers?** With one session each,
 the right trade for a smoke test. §12 of `KAVACH_Project_Idea.md` is the
 fallback paper if the answer is no, and it is a respectable one.
 
-### 2. Wire the real branches into the experiment runner
+### 2. Wire the real branches into the experiment runner — DONE
 
-`experiments.py` runs CSBG-only by default; `--simulate-branches` substitutes
-documented stand-ins and marks the run unreportable for doing so. What is
-missing is the third path: real ECAPA embeddings from `embedding.py` and the
-real answer matcher from `matcher.py`, as `speaker_score_fn` and
-`knowledge_score_fn`. The plumbing takes them already — `build_trials` has
-accepted callables since it was written.
+`eval/branches.py` supplies both, behind `--real-branches`: ECAPA-TDNN cosine
+against an enrolled template, and the answer matcher against the claimed
+speaker's enrolled answer to the same prompt. Off by default because it needs
+the corpus audio present and downloads the speechbrain checkpoint on first use.
+`--real-branches` and `--simulate-branches` together raise.
+
+Three things there are load-bearing and easy to undo by accident:
+
+- **Unmeasurable trials score `nan`, never `0.0`.** On a [0, 1] branch scale
+  `0.0` is maximal evidence *against* the claim, so a missing recording scored
+  as `0.0` looks like a confident impostor detection and improves the EER.
+- **Cosine maps to [0, 1] affinely, not by clamping negatives.** The affine map
+  is strictly monotone so it moves no trial past another; clamping would
+  collapse the impostor tail the veto threshold is fitted on.
+- **Coverage is counted and blocks reporting.** A branch that scored nothing and
+  a branch that scored everything and found no signal produce the same fusion
+  table.
+
+**The knowledge branch measures nothing on the current pilot, by construction.**
+It needs the claimed speaker to have answered the probe's prompt at enrolment.
+A cross-session protocol always gives it that; a within-session split never
+does, because a prompt held out as a probe is by definition absent from that
+speaker's enrolment. It reports zero coverage and blocks the run rather than
+emitting nan noise. Second sessions fix it — nothing in the code will.
 
 ### 3. Annotate the corpus
 
@@ -142,9 +160,30 @@ romanised Tamil is Latin, so the filter strips nothing from the reference and
 all the Tamil from the hypothesis; that scored 96% and looked like a result.
 `annotate.transcripts_are_comparable` refuses both and `asr_wer` stays None.
 
-The Track-1 contribution therefore needs **hand-corrected transcripts on a
-subset**. That is cheap here precisely because the reference exists: a human
-corrects a transcript instead of producing one. Budget it as a real task.
+The Track-1 contribution therefore needs **hand-labelled word-level LID on a
+subset**, and `kavach.goldset` is the tooling for it:
+
+    python -m kavach.goldset export --manifest data/corpus_v1/manifest.json \
+        --out data/goldset_v1.tsv --utterances 20
+    # a Tamil-English bilingual fills in the lang and class columns
+    python -m kavach.goldset score --manifest data/corpus_v1/manifest.json \
+        --gold data/goldset_v1.tsv --report paper/results/lid_track1.md
+
+The export samples round-robin across speakers (a uniform sample from four
+speakers lands most tokens on one voice, and LID accuracy is per-speaker here)
+and writes its whole instruction sheet into the file header.
+
+**Labels are blank by default and `--prefill` is opt-in.** Prefilling turns
+labelling into agreeing: a corrector who sees "TA" agrees far more often than a
+labeller starting from nothing, so measured accuracy drifts toward 100%
+whatever the tagger does. The file records which mode produced it and
+`GoldScore` carries the caveat into the report, so a prefilled set can never be
+reported as blind.
+
+The scorer reports the **transliteration slice** separately —
+`transliterated_total` / `transliteration_recall`, Tamil-script tokens the human
+labelled EN. Aggregate accuracy hides them because they are a small fraction
+overall and not a small fraction of NUMBER and TIME_DATE.
 
 ### 4. Smaller items
 
