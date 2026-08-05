@@ -35,12 +35,17 @@ backend/kavach/         the system
     csbg/               ontology, graph construction, LLR scoring, metrics
     lid/                word-level language ID and semantic tagging
     attacks/            the A1–A5 threat model and its detectors
-    eval/               EER, minDCF, DET curves
+    eval/               EER, minDCF, DET curves, ablations, figures
     api/                FastAPI layer serving the frontend
+    corpus.py           recorded-speech manifest, loader, elicitation protocol
+    experiments.py      one command producing every table and figure
     audio.py asr.py embedding.py matcher.py skg.py challenge.py fusion.py
 kavach/                 the frontend (Vite + React + TypeScript)
-tests/                  376 tests, none of which need a GPU
+tests/                  600 tests, none of which need a GPU
 ```
+
+Recording a corpus? Read **[RECORDING_PROTOCOL.md](RECORDING_PROTOCOL.md)**
+before contacting a participant — consent cannot be applied retroactively.
 
 ---
 
@@ -88,9 +93,30 @@ answer, which the backend deliberately never sends.
 ### Tests
 
 ```bash
-pytest                                    # 376 passed
-pytest -m "not slow"                      # skip anything that loads a model
+pytest                                    # 600 passed, ~36s
+pytest -m models                          # only the tests needing real checkpoints
 ```
+
+**Python 3.10+ is required.** On 3.9 every test file fails at collection
+(`dataclass(slots=True)`). If the system interpreter is older:
+
+```bash
+uv venv --python 3.11 .venv
+uv pip install --python .venv/bin/python -r requirements-core.txt
+.venv/bin/python -m pytest
+```
+
+### The offline evaluation
+
+```bash
+python -m kavach.experiments --out paper/results/
+```
+
+Writes `results.json` (the paper reads from here — no number is hand-typed into
+LaTeX), `report.md`, `tables/*.tex` and `figures/*.pdf`, alongside the git
+commit and every seed. Without `--manifest` it runs on `simulation.py`, and
+**every output is stamped unreportable** — in the JSON, in the README it
+writes, and as a banner inside each `.tex` file.
 
 ---
 
@@ -118,3 +144,8 @@ like a working defence in exactly the table this project exists to produce.
 **`data/` holds voiceprints next to hometowns, schools and family names.** It is
 git-ignored, it is not encrypted, and a deletion request must remove the audio
 and the knowledge graph, not just the speaker row (`Store.delete_speaker`).
+
+**The mock has no failure modes, so run the UI against a *degraded* backend.**
+Three frontend bugs survived until the first real run because `mock.ts` always
+returns a populated, well-formed payload — one of them crashed every page in
+the application when no model was loaded. See PROJECT.md §5.8.

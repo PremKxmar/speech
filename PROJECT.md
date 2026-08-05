@@ -67,9 +67,12 @@ backend/kavach/
     metrics.py       graph-level statistics
   lid/             word-level language ID + semantic tagging (rules, then LLM)
   attacks/         A1–A5 attack construction, splice/replay detection, IAPMR
+  corpus.py        recorded-speech manifest, loader, coverage, session split
+  experiments.py   one command -> results.json + figures + LaTeX tables
   eval/
     metrics.py       EER, minDCF, DET, bootstrap CIs, Wilson intervals
     ablation.py      dev/test split, fitted weights, fitted veto, ablations
+    figures.py       publication figures; greyscale-safe, no chartjunk
   api/             FastAPI layer serving the React UI
     schemas.py       Pydantic contract mirroring the frontend's types.ts
     converters.py    the single place domain ↔ wire conversion happens
@@ -81,7 +84,7 @@ backend/kavach/
   fusion.py        branch combination, gates, vetoes
   audio.py  asr.py  embedding.py  matcher.py  skg.py  challenge.py  simulation.py
 kavach/            the React + Vite + TypeScript UI (user-supplied)
-tests/             434 tests
+tests/             600 tests
 ```
 
 ---
@@ -165,13 +168,16 @@ build announces itself.
 
 | Component | Status |
 |---|---|
-| CSBG construction, LLR scoring, cohort z-norm | Real, tested |
+| CSBG construction, LLR scoring, cohort z-norm | Real, tested (z-norm fixed in session 8 — see §5.6) |
 | EER / minDCF / DET / bootstrap CIs | Real, tested |
 | Fitted fusion weights, threshold, veto floor | Real, fitted on a dev split |
 | Splice + duplicate detection | Real, calibrated on synthetic audio |
 | ECAPA-TDNN embeddings | Model installed and verified (192-d, loads in 0.2 s) |
+| Corpus manifest, loader, coverage, session split | Real, tested — **but no manifest has been populated** |
+| Figures and the experiment runner | Real, tested; every output stamped unreportable |
 | **Speech corpus** | **Does not exist. Everything runs on `simulation.py`.** |
 | **Voice cloning (A3–A5 acoustic scores)** | **Modelled from a documented distribution, not measured.** |
+| **Acoustic + knowledge branches in `experiments.py`** | **Documented stand-ins under `--simulate-branches`; the real models are not wired in yet.** |
 | LLM semantic tagging | Falls back to rules; not corpus-grade without an API key |
 
 `AttackTable.paper_ready()` refuses every current row, by design.
@@ -268,6 +274,76 @@ accepted at the bottom of the sweep and the FRR floor vanished. The first fix
 acceptable at a low enough threshold. The correct fix anchors from the lowest
 *finite* score and passes `−inf` straight through.
 
+### 5.6 A normalisation that was reported and never happened
+
+`run_ablation` fitted its cohort z-normaliser on `split.dev` and applied it to
+`split.test`, and the report said so in a caveat. It covered **zero of the eleven
+test speakers.** `split_by_speaker` assigns a trial to dev only when *both* its
+speakers are dev speakers, so dev trials only ever claim dev identities, and
+`CohortNormaliser.apply` falls back to (mean 0, std 1) for anyone it has not seen.
+Every test score passed through unnormalised.
+
+It was invisible because the fallback is indistinguishable from a speaker whose
+cohort happens to be centred, and because the one visible effect — a squash scale
+of 1.5 instead of 2.0 — is monotone, so **EER did not move at all**. A bug that
+changes no metric is not caught by checking metrics.
+
+The fix uses the trials `split_by_speaker` was already discarding. A cross-boundary
+trial pairing a *test speaker's model* with a *dev speaker's probe* uses no test
+probe and no test label, which is exactly what Z-norm has always meant: statistics
+computed at enrolment against a development cohort. `Split.cohort` keeps them and
+`cohort_fitting_trials` selects the safe half — the other half, a dev model against
+a test probe, is still excluded, because dev statistics rescale the dev trials that
+the weights, threshold and veto floor are all fitted on.
+
+Effect on the table: `+ CSBG only` moved 28.48% → 23.18% EER and full-fusion minDCF
+0.696 → 0.552. **The generalisable point: a dictionary lookup with a default cannot
+report that it missed.** Assert coverage, or the default becomes the measurement.
+
+### 5.7 An ablation measured on the wrong system reads zero, and the zero lies
+
+Every CSBG scoring ablation — class set, transition stream, graph metrics, z-norm —
+came out at exactly `+0.00` against the full system. Not because the components do
+nothing: because the knowledge branch separates far better and pins the fused EER,
+so nothing done to the CSBG can move it. The delta was also quantised to the width
+of one genuine trial (1.5 points at n=66), wider than the effects being looked for.
+
+A table reading "transition stream removed: +0.00" is read as "the transition stream
+is worthless". Scoped to the branch it actually changes, the same ablations read
+−1.82, −0.30, +0.00 and +3.48 — the lexical stream is carrying the CSBG, which is
+the finding. `AblationRow.scope` now records what each EER is an EER *of*, and
+`to_markdown` prints it in its own column with a warning that rows in different
+scopes are not comparable.
+
+### 5.8 Three bugs the mock could not show
+
+The frontend had never been rendered against the backend. Running it found three
+failures, all of which are invisible under `VITE_USE_MOCK=true` because the mock
+always returns a populated, well-formed payload:
+
+1. **`health.models[0].toUpperCase()` crashed the entire application.** `models` is
+   empty in degraded mode — the documented first-class state (§3.7) and what anyone
+   gets from `requirements-core.txt`. The throw took `AppLayout` down, so *every*
+   route rendered blank. The mock hard-codes three model names.
+2. **The Graph Explorer defaulted to the mock id `spk_001`.** No real backend issues
+   it, so the CSBG fetch 404'd and cytoscape never initialised. The `<select>` still
+   *showed* a speaker name, because a value matching no option makes the browser
+   display the first one — a blank graph under an apparently-chosen speaker.
+3. **The Overview printed fabricated figures.** `System EER 3.12%` and `Attack
+   Rejection 98.4%` were hardcoded, as were deltas including `380 success` sitting
+   beside a real trial count of zero. Derived from the API, the same panel reads
+   `n/a` and `40.2%`.
+
+The third is the one that matters most for this project. The repository is arranged
+end to end so an unearned number cannot pass as a measured one — `paper_ready()`
+refuses rows, `format_rate` renders unattainable points as `n/a`, `provenance`
+travels into the LaTeX — and the dashboard was the single place that convention was
+not kept. It is also the surface most likely to be screenshotted into a progress
+report.
+
+**The generalisable point: a mock is a design preview, and a design preview has no
+failure modes.** Run the UI against a *degraded* backend, not merely a healthy one.
+
 ---
 
 ## 6. Session history
@@ -356,6 +432,54 @@ veto      : 0.450 on csbg -- removes 2.36% FAR, costs 1.25% FRR
 Test count: **434 passing**, offline, in about 60 seconds, verified across three
 consecutive full runs.
 
+### Session 8 — the corpus layer, the figures, the runner, and the first UI run
+
+1. **Corpus layer** (`corpus.py`, 61 tests). Manifest schema, loader, validation,
+   consent enforcement, coverage report, and the elicitation protocol as code —
+   `PROTOCOL_V1` asserts at import that every `ELICITABLE_CLASS` has a prompt.
+   `split_sessions` splits enrolment from probe speech **by session, never by
+   utterance**, the same refusal `split_by_speaker` makes one level up.
+   `from_simulation` bridges the simulator into the same interface so there is one
+   code path, stamped `SIMULATED` so it cannot be reported by accident.
+
+2. **Recording protocol** ([RECORDING_PROTOCOL.md](RECORDING_PROTOCOL.md)). Consent
+   first, 25–30 speakers, ≥2 sessions weeks apart, the 14 bilingual prompts, and the
+   pilot checks to run before recording the other 25.
+
+3. **Figures** (`eval/figures.py`, 41 tests). Six publication figures, greyscale-safe
+   by construction: identity is carried by line style and marker, and a test asserts
+   the palette is achromatic. The CSBG heatmap hatches cells whose token count sits
+   below the smoothing pseudo-count, because a class at the backoff prior shows the
+   population's habit, not the speaker's.
+
+4. **Experiment runner** (`experiments.py`, 31 tests). One command emits
+   `results.json`, `report.md`, `tables/*.tex` and `figures/*.pdf`, with the git
+   commit, seeds and package versions recorded. Provenance travels into the LaTeX as
+   a visible banner, because a `.tex` that looks identical whether it came from
+   recordings or from `simulation.py` is how a simulated number reaches a submission.
+
+5. **Scoring ablations and the stability curve** wired into `run_ablation`
+   (§5.7), and **per-speaker IAPMR** exposed at `GET /api/attacks/per-speaker` and
+   rendered in the Attack Lab — with unattacked speakers listed rather than omitted,
+   since an unmeasured speaker is not a protected one.
+
+6. **Found that cohort z-normalisation was never happening on test** (§5.6). The
+   fix moved `+ CSBG only` from 28.48% to 23.18% EER.
+
+7. **Ran the frontend against the backend for the first time** and found three bugs
+   the mock cannot show (§5.8), one of which blanked every page in the application.
+   All eight pages now render against a live degraded backend; `tsc --noEmit` clean.
+
+8. **Fixed a duplicate-key crash in the Attack Lab.** `run_attack` minted its run id
+   from the seeded RNG that makes its scores reproducible, so attacking a second
+   speaker with the same attack type violated the primary key and returned a 500.
+
+Test count: **600 passing**, offline, in about 36 seconds.
+
+Also discovered: the project requires **Python 3.10+** and fails at collection on
+3.9 (`dataclass(slots=True)`). Nothing recorded that before, and the machine this
+session ran on had only the system 3.9. HANDOFF.md now says so.
+
 ---
 
 ## 7. Running it
@@ -363,7 +487,7 @@ consecutive full runs.
 ```bash
 # Backend — core only, no heavy models, runs in degraded mode
 pip install -r requirements-core.txt
-pytest                                   # 434 tests, offline, ~60s
+pytest                                   # 600 tests, offline, ~36s
 
 # Backend — everything
 pip install -r requirements.txt

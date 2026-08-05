@@ -8,18 +8,36 @@ things stand and what is left.
 
 ## Current state
 
-- **434 tests passing**, offline, in about 60 seconds.
+- **600 tests passing**, offline, in about 36 seconds.
 - Working tree clean, everything pushed to `PremKxmar/speech.git`.
-- Backend runs and serves the UI. Frontend has never been rendered against it.
-- ECAPA-TDNN installed and verified. Whisper installed, checkpoint not downloaded.
+- Backend runs and serves the UI. **The frontend has now been run against it**,
+  all eight pages render, and `tsc --noEmit` is clean. Three bugs that only
+  appear against a real backend were found and fixed — see §5.6–5.8 of
+  PROJECT.md.
+- The corpus layer, the figures, and the experiment runner all exist. One
+  command produces every table and figure.
 - **No human speech has been recorded.** Every number in the repo is synthetic.
 
 ```bash
 git clone https://github.com/PremKxmar/speech.git
 cd speech
 pip install -r requirements-core.txt
-pytest                    # expect 434 passed
+pytest                    # expect 600 passed
 ```
+
+**Python 3.10+ is required, and it is not optional.** The code uses
+`dataclass(slots=True)`; on 3.9 every test file fails at collection with
+`TypeError: dataclass() got an unexpected keyword argument 'slots'`. The
+machine this was last built on had only the system 3.9, so:
+
+```bash
+uv venv --python 3.11 .venv          # or any 3.10+ interpreter
+uv pip install --python .venv/bin/python -r requirements-core.txt
+.venv/bin/python -m pytest
+```
+
+Note `pyproject.toml` sets `addopts = "-q"`, so passing `-q` again suppresses
+the pass/fail summary line. Run plain `pytest` to see the count.
 
 ---
 
@@ -37,73 +55,72 @@ day the recordings exist.
 
 ---
 
+## What was built last session
+
+All five items on the previous list are done.
+
+| Item | Where |
+|---|---|
+| Corpus layer | `backend/kavach/corpus.py`, `tests/test_corpus.py` (61 tests) |
+| Recording protocol | [RECORDING_PROTOCOL.md](RECORDING_PROTOCOL.md) |
+| Figures | `backend/kavach/eval/figures.py`, `tests/test_figures.py` (41 tests) |
+| Experiment runner | `backend/kavach/experiments.py`, `tests/test_experiments.py` (31 tests) |
+| Scoring ablations + stability wiring | `eval/ablation.py::ablate_scoring`, `run_ablation(enrolment=...)` |
+| Per-speaker IAPMR | `GET /api/attacks/per-speaker`, rendered in the Attack Lab |
+
+One command now produces the whole evaluation:
+
+```bash
+python -m kavach.experiments --out paper/results/ --simulate-branches
+# -> results.json, report.md, tables/*.tex, figures/*.pdf
+```
+
+Everything it emits is stamped unreportable, in the JSON, in the README it
+writes, and as a banner inside every `.tex` file. Removing that banner requires
+a corpus, not an edit.
+
+---
+
 ## Next tasks, in priority order
 
-### 1. Corpus layer — `backend/kavach/corpus.py` (does not exist yet)
+### 1. Record the corpus
 
-A manifest format and loader so real recordings drop in where `simulation.py`
-currently sits. Needs:
+Everything else is now built and waiting for it. Follow
+[RECORDING_PROTOCOL.md](RECORDING_PROTOCOL.md): ethics approval first, then a
+5-speaker pilot, then `Corpus.coverage()` to check the prompts actually elicit
+their target classes before recording the other 25.
 
-- A manifest schema (speaker id, session, utterance, elicitation prompt, consent
-  reference, device, environment).
-- A loader producing the same `list[UtteranceTokens]` shape that `build_trials`
-  already consumes, so `eval/ablation.py` needs no changes.
-- A recording protocol document: how many speakers, how many sessions each, what
-  prompts elicit which semantic classes, what the consent form must say.
-  `csbg/ontology.py::ELICITABLE_CLASSES` is the constraint that drives the prompt
-  design.
+The pilot's go/no-go question is unchanged: **do genuine and impostor CSBG
+scores separate at all on real speakers?** Decide at the end of the pilot, not
+in week 6. §12 of `KAVACH_Project_Idea.md` is the fallback paper if the answer
+is no, and it is a respectable one.
 
-Design note: sessions must be separable, because §5.3 shows same-session versus
-cross-session materially changes what the integrity detector can see — and because
-enrolment stability needs a within-speaker across-session measurement.
+### 2. Wire the real branches into the experiment runner
 
-### 2. Figures — `backend/kavach/eval/figures.py` (does not exist yet)
+`experiments.py` runs CSBG-only by default; `--simulate-branches` substitutes
+documented stand-ins and marks the run unreportable for doing so. What is
+missing is the third path: real ECAPA embeddings from `embedding.py` and the
+real answer matcher from `matcher.py`, as `speaker_score_fn` and
+`knowledge_score_fn`. The plumbing takes them already — `build_trials` has
+accepted callables since it was written.
 
-matplotlib, no seaborn, publication style. The user's standing constraint applies
-to figures as well as UI: **no neon, no AI-looking gradients.** Greyscale-safe,
-serif labels, no chartjunk.
+### 3. Whisper checkpoint
 
-- DET curve, one line per configuration
-- Ablation bar chart with bootstrap CIs
-- CSBG heatmap (21 classes × language choice) for two contrasting speakers
-- Enrolment stability curve (`ablation.stability_curve` already computes it)
-- **IAPMR vs. within-speaker consistency scatter** — this is the §5.4 figure and the
-  most interesting one in the paper
+`large-v3` is ~3 GB and has never been downloaded. Decide between `large-v3`
+(better Tamil) and `small` (usable on this laptop) and record which was used —
+`whisper_language` also matters: forcing `ta` generally produces better Tamil
+but can suppress English segments, which is exactly wrong for code-mixed
+input. Evaluate both and report which you used.
 
-### 3. Experiment runner — `backend/kavach/experiments.py` (does not exist yet)
+### 4. Smaller items
 
-One command that produces every number and figure in the paper, with seeds and a
-manifest recorded. `python -m kavach.experiments --out paper/results/`. Emits
-`results.json`, `figures/*.pdf`, `tables/*.tex`. The paper then reads from
-`results.json` so no number is ever hand-typed into LaTeX.
-
-### 4. Scoring-level ablations — `eval/ablation.py`
-
-`ablate_policy` handles policy-level ablations. These need a fresh `build_trials`
-and are not implemented in `run_ablation` yet:
-
-- class set: with and without `LOW_SIGNAL_CLASSES`
-- transition stream on/off
-- cohort z-normalisation on/off
-
-Also: `stability_curve` exists but `run_ablation` never calls it — it has to be
-invoked separately.
-
-### 5. Smaller items
-
-- **Per-speaker IAPMR through the API.** `AttackSuite.per_speaker_breakdown` exists;
-  no route exposes it.
-- **Run the frontend.** `npm install && npm run dev` against a live backend, then
-  check every page and `npm run lint` (`tsc --noEmit`). The contract test guards
-  field *names*, but as `tests/test_api.py` puts it: *"TypeScript cannot check a
-  JSON payload at runtime, so nothing in the frontend build catches a renamed field
-  — the failure appears as a blank panel in a demo."* No page has been rendered
-  against the real backend.
-- **Whisper checkpoint.** `large-v3` is ~3 GB and has never been downloaded. Decide
-  between `large-v3` (better Tamil) and `small` (usable on this laptop) and record
-  which was used — `whisper_language` also matters: forcing `ta` generally produces
-  better Tamil but can suppress English segments, which is exactly wrong for
-  code-mixed input. Evaluate both and report which you used.
+- **Graph Explorer label overlap.** The cytoscape concentric layout overlaps
+  its class labels at small window sizes. Cosmetic, and the UI is user-supplied,
+  so it was left alone — but it is the one page that does not screenshot well.
+- **The Speaker Knowledge Graph view** is still `Knowledge Graph Visualization
+  Not Implemented in this Mock` in `GraphExplorer.tsx`. The `/api/speakers/{id}/skg`
+  route works and returns triples.
+- **`Settings.demo_reveal_answers`** has never been exercised end to end.
 
 ---
 
@@ -145,6 +162,41 @@ invoked separately.
 7. **Never report a number from `simulation.py` as an experimental result.** Its own
    docstring says so.
 
+8. **A normaliser fitted on dev has no statistics for test speakers.**
+   `fit_cohort_normaliser(split.dev)` covered *zero* of the eleven test
+   speakers, because `split_by_speaker` puts a trial in dev only when both its
+   speakers are dev speakers. Every test lookup fell back to (mean 0, std 1),
+   so cohort z-norm was reported on the test table and did not happen. Fixed by
+   keeping the discarded cross-boundary trials on `Split.cohort` and fitting
+   from those whose *probe* is a dev speaker — see `cohort_fitting_trials` for
+   why the other half of that cohort is still excluded. **The general trap: a
+   lookup with a silent default cannot tell you it missed.**
+
+9. **An ablation measured on the wrong scope reads +0.00 and the zero lies.**
+   Every CSBG scoring ablation showed no effect on the fused system, because
+   the knowledge branch separates far better and pins the EER. The rows only
+   mean something measured on the branch they change. `AblationRow.scope`
+   records which system each row is an EER *of*, and the markdown prints it.
+
+10. **A seeded RNG must not mint identifiers.** `run_attack` built its run id
+    from the same seeded `random.Random` that makes its scores reproducible, so
+    attacking a second speaker with the same attack type produced a duplicate
+    primary key and a 500 — on the one workflow the Attack Lab exists for.
+    Reproducible scores are the property worth having; a reproducible id is a
+    collision.
+
+11. **Escape LaTeX in one pass, not with chained `str.replace`.** Escaping `\`
+    first yields `\textbackslash{}`, and a later `{` rule then escapes the
+    braces of that replacement. Reordering only moves the collision, because
+    `~` and `^` expand to braces too. See `experiments._TEX_ESCAPES`.
+
+12. **The mock hides the degraded path.** Three separate frontend bugs were
+    invisible in `VITE_USE_MOCK=true` because the mock always returns a
+    populated, well-formed payload: an empty `models` array crashed the whole
+    app, a hardcoded `spk_001` made the Graph Explorer draw nothing, and the
+    Overview printed invented figures. **Run the UI against a degraded backend
+    before demoing it**, not just against a healthy one.
+
 ---
 
 ## Standing instructions from the user
@@ -157,20 +209,28 @@ invoked separately.
 
 ---
 
-## Open questions for the user
+## Answered, and what followed from each
 
-1. **How many speakers can realistically be recorded, and over how many sessions?**
-   This determines whether the evaluation is a pilot (n≈10, report descriptively) or
-   a study (n≈30+, report EER with intervals). `eval/ablation.py` already discards
-   cross-boundary trials, so the usable trial count falls faster than the speaker
-   count suggests.
+1. **How many speakers?** ~25–30, over multiple sessions. The corpus layer and
+   `RECORDING_PROTOCOL.md` are written to that number: ≥25 for usable EER
+   intervals, ≥2 sessions per speaker weeks apart for §5.3, and
+   `Corpus.reportability()` names every single-session speaker because the
+   second sitting is the thing that cannot be recovered later.
 
-2. **Is there an ANTHROPIC_API_KEY available for the semantic tagging pass?**
-   Without it the LID pipeline falls back to rules plus a low-confidence guess for
-   unresolved Latin tokens, which `PipelineStats.is_corpus_grade` correctly refuses
-   to certify. The tagging quality bounds everything downstream.
+2. **ANTHROPIC_API_KEY?** Not available yet. So `Corpus.reportability()`
+   counts `n_guessed_tokens` and refuses a rules-only annotation, using the
+   same rule `PipelineStats.is_corpus_grade` already applies rather than
+   inventing a second standard.
 
-3. **Is a voice cloner in scope?** A3–A5 acoustic scores are currently drawn from a
-   documented distribution. Without a real cloner those rows stay simulated and
-   `paper_ready()` keeps refusing them. XTTS-v2 is the obvious candidate and is
-   already named in the requirements.
+3. **Voice cloner?** Not in scope yet. A3–A5 acoustic scores stay drawn from a
+   documented distribution, `paper_ready()` keeps refusing those rows, and the
+   experiment runner adds its own blocker whenever stand-in branches are used.
+
+## Still open
+
+1. **Which Whisper checkpoint** — see task 3 above. This one needs a decision
+   before annotation starts, because it changes every token downstream.
+
+2. **Is a resource-paper track available at SPELLL-2026?** §5.4 treats the
+   corpus as the insurance policy; whether it can be submitted as its own
+   contribution changes how much rides on the CSBG result.
