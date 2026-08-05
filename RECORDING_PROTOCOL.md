@@ -221,6 +221,35 @@ second generation on top and destroyed the artefact baseline. The instruction to
 send via WhatsApp **Document** rather than as a voice note is the same concern —
 voice notes are re-encoded to Opus in transit.
 
+### Scripted collection
+
+[participant_scripts/](participant_scripts/) is the other, faster route:
+`SPEAKER_A.md`–`SPEAKER_J.md` answer the same 14 prompts with authored text, one
+language profile per speaker. What comes back is real speech with invented
+content. It is `Provenance.SCRIPTED`, `is_reportable` is False, and the reasoning
+is in [participant_scripts/README.md](participant_scripts/README.md) — no §5.1
+claim follows from it.
+
+The scripts carry no consent block: they were stripped to the recording rules
+and the answers so participants read them rather than skim them. **Send this in
+the covering message, and keep the reply — it is what `consent_ref` points at:**
+
+> This is for a final-year speech project. I'll send you a script — you just
+> read it out loud into your phone, 14 short recordings, about 15 minutes. None
+> of it is about you, it's all made up. Reply **yes** if you agree to be
+> recorded, to a voice model being built from your recording, and to both being
+> used in the project. Your name is replaced by a code and never appears
+> anywhere. There's a second, shorter recording in about two weeks, so only say
+> yes if you can do both. You can pull out later and everything derived from
+> your voice gets deleted, not just the audio.
+
+A scripted session collects **no personal data** — every fact in the script is
+invented, so §5's SKG interview does not apply. The SKG for a scripted speaker
+is populated from their own script, which also means the knowledge branch is
+answering questions about a person who does not exist. That is fine for A4 (the
+attacker still has to hold the answer) and worthless as evidence about real
+users.
+
 ### After the pilot, before full collection
 
 Run `Corpus.coverage()` on the pilot recordings and read two lists:

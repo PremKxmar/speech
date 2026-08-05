@@ -114,6 +114,18 @@ reporting.
   wake-up times. Identical content with different language assignments lets the
   knowledge branch separate speakers by topic and quietly inflates fusion.
 
+### Consent lives in the covering message, not in the script
+
+The script files are stripped to the recording rules and the fourteen answers,
+so participants read rather than skim. Consent is therefore **not** in them and
+must be sent alongside — the wording is in
+[../RECORDING_PROTOCOL.md](../RECORDING_PROTOCOL.md). A scripted session collects
+no personal data (every fact is invented), so the ask is narrower than the
+spontaneous protocol's: record + voice model + research use, and a second
+session in two weeks. It is still required. `Corpus.validate()` rejects a
+manifest whose speakers have no `consent_ref`, and the reply that grants it is
+what that field points at.
+
 ### Ground truth
 
 Because every token was authored, the intended language of each word is known.

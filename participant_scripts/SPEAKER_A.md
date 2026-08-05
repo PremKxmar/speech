@@ -1,55 +1,16 @@
-# Voice recording — Speaker A
+# Speaker A — recording script
 
-Thanks for helping with this final-year project. It takes **about 15 minutes**.
+Read this out loud. Everything below is made up — read it as written, don't put
+in your own details.
 
-Everything you need to say is written below. You just read it out. There is
-nothing to prepare and nothing to think up.
-
----
-
-## Before you start
-
-- The answers below are **made up**. The family, the hometown, the prices — none
-  of it is about you. Read them as they are written. Do not replace anything with
-  your own real details.
-- Reply with **yes** to this line before recording:
-  *I agree to be recorded, to a voice model being built from my recording, and to
-  both being used in this research project.*
-- Your name is replaced with a code everywhere in the project. It never appears
-  in any file or in the paper.
-- We will ask for a **second, shorter recording in about two weeks**. Please only
-  say yes if you can do both.
-
----
-
-## How to record
-
-- Quiet room, door shut. No fan directly overhead, no music, no TV.
-- Your phone's normal voice recorder. Hold it about a hand's length away.
-- **One file per answer. Fourteen answers, fourteen separate files.**
-- **Wait one second before you start speaking** in each file. Press record, pause
-  a beat, then begin.
-- **Do not convert the files or clean them up.** Whatever your recorder saves is
-  what we need.
-
-**How to read it**
-
-Read it the way you would say it, not the way you would read a textbook. Normal
-speed, normal expression. It should sound like you are telling someone
-something, not reciting.
-
-If a word feels wrong in your mouth, **change it** — say it the way you would say
-it. Small changes are fine and actually help us. Just do not switch a Tamil word
-to English or an English word to Tamil, because that is the part we are
-measuring.
-
-If you stumble, carry on. Do not re-record. One take per answer.
-
----
-
-## What to read
-
-Fourteen answers. Each takes about 30 seconds.
+- **14 answers, 14 separate files.** Name them `01` to `14`.
+- Press record, **wait one second**, then start speaking.
+- Quiet room, phone's normal recorder, held about a hand away.
+- Read it like you're talking to someone, not like a textbook. If a word feels
+  wrong in your mouth, change it — but keep Tamil words Tamil and English words
+  English. That's the part being measured.
+- One take each. Don't re-record, don't edit, don't convert the files.
+- Send as **Document** on WhatsApp (not a voice note), or Drive/email.
 
 ---
 
@@ -136,7 +97,7 @@ Oru vaati paakkalam, adhuku mela illa.
 
 ### 10
 
-*(This one is shorter — about 20 seconds.)*
+*(Shorter — about 20 seconds.)*
 
 Naan two thousand and four la piranthen. Enga area la oru plate idli ten rupees,
 adhula four idli varum. Innaiku naan morning six forty five ku ezhunthen. Konjam
@@ -177,27 +138,4 @@ En amma peru Vasanthi.
 
 ---
 
-## Sending it back
-
-Name the files `01`, `02`, ... `14`, matching the numbers above. Put them in one
-folder or zip with your first name on it and send it across.
-
-**Send them as files, not as voice messages.** On WhatsApp use **Document**, not
-the microphone button and not the audio option — those squash the recording and
-make it unusable. Google Drive, email or Telegram all work.
-
-Also tell us:
-
-- **Phone model** you recorded on (e.g. "Redmi Note 12", "iPhone 13")
-- **Where** you recorded (e.g. "my room", "hostel room")
-- Your **age**
-
----
-
-## Your rights
-
-Taking part is voluntary and you can stop at any point. You can withdraw later
-without giving a reason, and everything derived from your voice is deleted, not
-just the audio file. Your name is never stored with the recordings.
-
-Ask anything before you record, not after.
+Also send: **phone model**, **where you recorded**, and your **age**.
