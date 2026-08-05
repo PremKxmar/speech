@@ -170,6 +170,48 @@ it is the control that demonstrates exactly this, and it is flagged
 - Do not correct language choice. Ever. The thing being measured is the thing
   you would be correcting.
 
+### Self-recorded collection
+
+[PARTICIPANT_SHEET.md](PARTICIPANT_SHEET.md) is the forwardable version of this
+section: consent block, recording instructions, all 14 prompts bilingually, the
+SKG questions and return instructions, written for someone who has never heard
+of the project. Send it as-is. Everything in it is deliberate:
+
+- **The prompt numbers `01`–`14` are the ordinal positions of `PROTOCOL_V1`**, so
+  a participant's `07.m4a` is `p07_festival` without anyone consulting a table.
+  `ingest.py` resolves numeric filenames through that order. Reordering
+  `PROTOCOL_V1` silently remaps every file already collected — don't.
+- **`p10_numbers` is expanded** into three concrete asks (birth year, idli price,
+  wake-up time). The terse `text_en` works when an interviewer is present to
+  clarify; alone with a phone it produces three bare numerals, and the class
+  needs them wrapped in sentences.
+- **The sheet says what is collected, not what is measured.** "Tamil–English
+  speech and voice-based login" is true and sufficient for consent. Naming the
+  hypothesis — that per-topic language choice identifies a speaker — makes
+  participants monitor exactly the behaviour under test. Debrief afterwards.
+- **Prompts are given in both languages with an explicit instruction not to
+  match the language they read in.** This substitutes for §4's "ask in whichever
+  language they greeted you in": with no interviewer, the *sheet* is the thing
+  that models the answer, and an English-only sheet buys an English-only corpus.
+- **Public release is a separate, optional consent line.** Track-1 at SPELLL is a
+  language-resources track; releasing the corpus is worth more than the CSBG
+  result if the CSBG result is null. Release consent cannot be added
+  retroactively, so it is asked at recruitment even though release is undecided.
+- **The second session is promised at recruitment**, not sprung two weeks later.
+  Attrition between sittings is what kills §5.3, and the cheapest fix is telling
+  people up front that there are two.
+
+**No interviewer means no "tell me a bit more."** The sheet compensates with a
+per-prompt content hint and a stated floor, but expect self-recorded answers to
+run short: check `wrapperless_prompts()` on the first returns, not on all 30.
+
+**Ask for the recorder's native format and forbid conversion.** Phone recorders
+mostly emit AAC/`m4a`; that is one lossy generation and `integrity.py` can be
+told about it. A participant who helpfully re-exports to "WAV" has stacked a
+second generation on top and destroyed the artefact baseline. The instruction to
+send via WhatsApp **Document** rather than as a voice note is the same concern —
+voice notes are re-encoded to Opus in transit.
+
 ### After the pilot, before full collection
 
 Run `Corpus.coverage()` on the pilot recordings and read two lists:
