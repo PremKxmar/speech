@@ -250,6 +250,57 @@ answering questions about a person who does not exist. That is fine for A4 (the
 attacker still has to hold the answer) and worthless as evidence about real
 users.
 
+### What the first four returns taught us
+
+Four participants returned complete sets (56 files, 24 minutes) before any of
+this was written down. Everything below is measured, not anticipated.
+
+**Two of the four sent WhatsApp voice notes.** They arrived as Opus at 18 kbps
+in an `.ogg`; the other two sent documents and arrived as AAC at 128 and
+192 kbps. The instruction to use **Document** is in the sheet and it was still
+missed by half the sample, so say it in the covering message too, and ask for
+the originals when it happens — the `.m4a` is still on their phone.
+
+It matters more than fidelity. At 16 kHz nothing important is lost: Opus at
+18 kbps carries 8.3 kHz of bandwidth, which is the full Nyquist band at the
+sample rate everything downstream runs at. The problem is that **codec becomes
+a speaker attribute**. Two speakers on Opus and two on AAC gives the acoustic
+branch a feature that separates them perfectly and has nothing to do with their
+voices, and `integrity.py`'s codec baseline reads the transit encode as if the
+recorder had produced it. Ingest resamples everything to 16 kHz mono, which
+removes the bandwidth half of the confound; the artefact half survives, so
+record `device` honestly and keep the codec split visible in the fairness
+slice.
+
+**Nobody left the lead-in silence.** Speech starts between 0.00 s and 0.56 s
+across all 56 files, mostly under 0.2 s, and several open mid-syllable.
+`ingest.py` flags it and `audio.leading_silence_sec` measures it. Say it as an
+action rather than a duration: *press record, count one-two, then start.*
+
+**SNR ran 18–25 dB on the AAC returns.** Usable, and the honest ceiling for
+phone recordings in a student room. Not worth re-recording for; worth stating
+in the paper rather than implying a studio.
+
+**Numerals came back as digits, and that was a bug in this repository, not in
+the recordings.** `Settings.suppress_numerals` had always passed
+faster-whisper's own default token set, which suppresses symbols and not
+digits, so prompt 10 — the prompt whose only job is to elicit a year, a price
+and a time — transcribed as `2004`, `10 Rs.` and `6.45`. A digit is
+language-neutral: it records that a speaker said a number and destroys which
+language they said it in, which is the entire content of the NUMBER class. Now
+fixed in `WhisperASR._numeral_tokens`, and the same audio transcribes as
+`two-thousand and four`, `ten rupees`, `six-forty-five`. **Any annotation run
+before this fix must be redone** — the affected classes are NUMBER, TIME_DATE
+and MONEY_COMMERCE, which is three of the sixteen the CSBG scores.
+
+**Whisper `small` is not adequate for annotation.** On monolingual stretches it
+is fine. At code-switch boundaries it emits fragments of unrelated languages —
+Vietnamese and Portuguese words inside a Tamil–English answer about a college
+timetable. Use `large-v3` for corpus annotation; a hallucinated token is worse
+than a missing one because it enters a graph as a real observation. Auto-detect
+(`whisper_language=None`) is right: it returns `ta` and keeps English in Latin
+script, which is what lets `lid.rules` resolve those tokens without an LLM call.
+
 ### After the pilot, before full collection
 
 Run `Corpus.coverage()` on the pilot recordings and read two lists:

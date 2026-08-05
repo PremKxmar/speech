@@ -38,10 +38,12 @@ backend/kavach/         the system
     eval/               EER, minDCF, DET curves, ablations, figures
     api/                FastAPI layer serving the frontend
     corpus.py           recorded-speech manifest, loader, elicitation protocol
+    ingest.py           returned participant folders -> validated manifest
     experiments.py      one command producing every table and figure
     audio.py asr.py embedding.py matcher.py skg.py challenge.py fusion.py
 kavach/                 the frontend (Vite + React + TypeScript)
-tests/                  600 tests, none of which need a GPU
+participant_scripts/    read-speech scripts, one language profile per speaker
+tests/                  660 tests, none of which need a GPU
 ```
 
 Recording a corpus? Read **[RECORDING_PROTOCOL.md](RECORDING_PROTOCOL.md)**
@@ -105,6 +107,29 @@ uv venv --python 3.11 .venv
 uv pip install --python .venv/bin/python -r requirements-core.txt
 .venv/bin/python -m pytest
 ```
+
+### Ingesting recordings
+
+Participants return a folder of numbered files. Two commands turn that into a
+manifest:
+
+```bash
+# 1. discover the folders, get a CSV skeleton with pseudonyms pre-assigned
+python -m kavach.ingest --audio recordings --emit-template data/speakers.csv
+
+# 2. fill in consent_ref and script_id, then build the corpus
+python -m kavach.ingest --audio recordings --speakers data/speakers.csv \
+    --out data/corpus_v1 --provenance SCRIPTED
+```
+
+Filenames resolve through `PROTOCOL_V1` **position**, so `03.m4a`, `3.wav` and
+`Q3.ogg` all become `p03_commute` — and anything that does not resolve is
+skipped loudly rather than guessed at. Add `--dry-run` to check a return
+without writing anything.
+
+The participant's folder name never reaches the manifest. It is a first name
+sitting beside a voiceprint; `data/speakers.csv` holds the mapping and belongs
+with the consent register, not in this repository.
 
 ### The offline evaluation
 

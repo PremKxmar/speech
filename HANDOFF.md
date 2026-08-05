@@ -85,15 +85,29 @@ a corpus, not an edit.
 
 ### 1. Record the corpus
 
-Everything else is now built and waiting for it. Follow
-[RECORDING_PROTOCOL.md](RECORDING_PROTOCOL.md): ethics approval first, then a
-5-speaker pilot, then `Corpus.coverage()` to check the prompts actually elicit
-their target classes before recording the other 25.
+**In progress.** Four speakers have returned complete sets. Collection is
+running on the scripted route: `participant_scripts/SPEAKER_A.md` …
+`SPEAKER_J.md`, one language profile per speaker, matrix in
+`participant_scripts/README.md`. Known mapping so far: `jai` read script A.
 
-The pilot's go/no-go question is unchanged: **do genuine and impostor CSBG
-scores separate at all on real speakers?** Decide at the end of the pilot, not
-in week 6. §12 of `KAVACH_Project_Idea.md` is the fallback paper if the answer
-is no, and it is a respectable one.
+`ingest.py` turns returned folders into a manifest. Read the "What the first
+four returns taught us" section of [RECORDING_PROTOCOL.md](RECORDING_PROTOCOL.md)
+before ingesting anything — two of four sent WhatsApp voice notes, which makes
+the codec a speaker attribute, and every numeral transcribed as a digit until
+the `suppress_numerals` fix.
+
+**A scripted corpus cannot support §5.1** and `Provenance.SCRIPTED` enforces
+that. What it does support: word-level LID on known text, whether the pipeline
+recovers a planted profile end to end, and the acoustic/integrity branches,
+which do not care that the words were authored. Run the spontaneous protocol in
+parallel with anyone who will sit for it — five spontaneous speakers plus ten
+scripted is a better paper than either alone.
+
+The go/no-go question is unchanged and now answerable sooner: **do genuine and
+impostor CSBG scores separate at all on real speakers?** With one session each,
+`--within-session` scores the pilot and stamps the run unreportable, which is
+the right trade for a smoke test. §12 of `KAVACH_Project_Idea.md` is the
+fallback paper if the answer is no, and it is a respectable one.
 
 ### 2. Wire the real branches into the experiment runner
 
@@ -104,13 +118,23 @@ real answer matcher from `matcher.py`, as `speaker_score_fn` and
 `knowledge_score_fn`. The plumbing takes them already — `build_trials` has
 accepted callables since it was written.
 
-### 3. Whisper checkpoint
+### 3. Annotate the corpus
 
-`large-v3` is ~3 GB and has never been downloaded. Decide between `large-v3`
-(better Tamil) and `small` (usable on this laptop) and record which was used —
-`whisper_language` also matters: forcing `ta` generally produces better Tamil
-but can suppress English segments, which is exactly wrong for code-mixed
-input. Evaluate both and report which you used.
+**The Whisper question is closed** — decided on real audio, reasoning in
+`Settings.whisper_model`. `large-v3` for annotation (`small` emits fragments of
+unrelated languages at code-switch boundaries), auto-detect for language (it
+keeps English in Latin script, which is what `lid.rules` reads for free), and
+`suppress_numerals` now genuinely suppresses numerals.
+
+What is left is the pass itself: run ASR over the ingested corpus, then
+`lid.pipeline` over the transcripts, and write the tokens back into the
+manifest. `PipelineStats.is_corpus_grade` is the gate — it is False if any
+token was guessed, which needs an LLM key for the semantic-class stage.
+
+For a scripted speaker the reference transcript is already in the manifest, so
+ASR can be scored against it rather than trusted. That WER is a result in its
+own right: word-level LID accuracy on code-mixed Tamil–English is the Track-1
+contribution and does not depend on the CSBG separating anybody.
 
 ### 4. Smaller items
 
