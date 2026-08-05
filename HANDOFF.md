@@ -185,15 +185,66 @@ The scorer reports the **transliteration slice** separately —
 labelled EN. Aggregate accuracy hides them because they are a small fraction
 overall and not a small fraction of NUMBER and TIME_DATE.
 
+### 3a. Tools built while waiting for the corpus
+
+Three commands that did not exist before and are needed to read what comes out
+of the pipeline.
+
+**`python -m kavach.inspect_corpus --manifest ...`** — read the corpus with your
+eyes. `--summary` (default) is the go/no-go read: per-speaker CMI, Tamil share,
+switch counts, and the language-choice-per-class table, which is the CSBG
+printed. It states the conclusion rather than leaving it to be computed — a
+Tamil-share spread under 0.10 across speakers gets "that is very little to
+separate on". `--text` for transcripts, `--tags` for token tables, `--translit`
+for every Tamil-script token labelled English.
+
+Use `--translit` to *check* the transliteration recovery rather than trust it.
+A wrong entry there is an English label on a word the speaker really did say in
+Tamil, which is the same bias pointing the other way, and nothing downstream
+can tell the two apart.
+
+**`python -m kavach.goldset`** — see §3 above.
+
+**`python -m kavach.experiments --real-branches --goldset ...`** — see §2 and §3.
+
+### 3b. Tagging survives a rate limit now — but know how it behaves
+
+A corpus pass drives one request per utterance with no pacing, against a free
+tier that allows ten-odd a minute. Retries are automatic (429/5xx, exponential
+backoff with jitter, `Retry-After` honoured and capped at 120s) and printed, so
+a stall is visible rather than looking like a hang.
+
+If a run still dies, **it has already saved what it tagged** (checkpoint every
+ten utterances, plus a save before the exception propagates). Resume with
+`--stage tag --resume`, never `--force`: `--force` re-sends the utterances that
+succeeded, against the same rate limit that stopped the run. `--resume` also
+does the right thing over rules-only tokens left by a no-key smoke test, which
+plain `--stage tag` skips because they already have tokens.
+
 ### 4. Smaller items
 
-- **Graph Explorer label overlap.** The cytoscape concentric layout overlaps
-  its class labels at small window sizes. Cosmetic, and the UI is user-supplied,
-  so it was left alone — but it is the one page that does not screenshot well.
-- **The Speaker Knowledge Graph view** is still `Knowledge Graph Visualization
-  Not Implemented in this Mock` in `GraphExplorer.tsx`. The `/api/speakers/{id}/skg`
-  route works and returns triples.
-- **`Settings.demo_reveal_answers`** has never been exercised end to end.
+All three of the previous items here are done:
+
+- **Graph Explorer label overlap** — fixed. Concentric now spaces by label
+  width and ranks the language nodes into the middle explicitly (its default
+  ranking is node degree, which put them there most of the time anyway and
+  silently reordered whenever the edge threshold moved).
+- **The Speaker Knowledge Graph view** — implemented as `SKGViz.tsx`. It
+  renders only what the wire format carries; inferring each node's semantic
+  class would mean duplicating `FACT_TYPES` from `skg.py` in TypeScript, where
+  it drifts the first time a fact type is added.
+- **`Settings.demo_reveal_answers`** — tested both directions. The useful test
+  is a sweep: with the flag off, a distinctive answer string must not appear in
+  the body of *any* route that touches a speaker, which catches a future route
+  that serialises a challenge wholesale. `/api/speakers/{id}/skg` is asserted to
+  still return it — that route is the enrolment editor, and it doubles as the
+  positive control proving the sweep can see.
+
+Still open:
+
+- The **Export PNG** button exports PNG, not SVG. cytoscape renders to canvas
+  and SVG needs the `cytoscape-svg` extension; adding it is the fix if a vector
+  figure is wanted.
 
 ---
 
