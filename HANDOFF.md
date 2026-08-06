@@ -8,7 +8,7 @@ things stand and what is left.
 
 ## Current state
 
-- **923 tests passing**, offline, in about 50 seconds.
+- **932 tests passing**, offline, in about 47 seconds.
 - Working tree clean, everything pushed to `PremKxmar/speech.git`.
 - Backend runs and serves the UI. All eight pages render, `tsc --noEmit` is
   clean, `vite build` succeeds, and the Graph Explorer now draws the SKG as
@@ -47,7 +47,7 @@ Neither of these depends on the script, so both survive into the paper:
 git clone https://github.com/PremKxmar/speech.git
 cd speech
 pip install -r requirements-core.txt
-pytest                    # expect 923 passed
+pytest                    # expect 932 passed
 ```
 
 The suite reaches no network and loads no checkpoint. Two autouse fixtures in
