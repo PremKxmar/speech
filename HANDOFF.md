@@ -8,14 +8,21 @@ things stand and what is left.
 
 ## Current state
 
-- **891 tests passing**, offline, in about 46 seconds.
+- **923 tests passing**, offline, in about 50 seconds.
 - Working tree clean, everything pushed to `PremKxmar/speech.git`.
 - Backend runs and serves the UI. All eight pages render, `tsc --noEmit` is
-  clean, and the Graph Explorer now draws the SKG as well as the CSBG.
-- **The pipeline has been run end to end on real recordings.** 4 speakers ×
-  14 utterances, transcribed with `large-v3`, tagged with
-  `gemini-3.1-flash-lite`: 2551 tokens, all 21 semantic classes populated,
-  zero guessed. `paper/results/` is that run's output and is committed.
+  clean, `vite build` succeeds, and the Graph Explorer now draws the SKG as
+  well as the CSBG. `/api/health` reports `connected` on a Gemini key alone.
+- **No paid API key is needed anywhere.** Tagging, challenge questions and
+  attacker text all run on whichever provider has a key, free tiers included.
+  Until recently only tagging did, so on a free-tier machine the other two
+  silently served their template banks — which is a weaker *security claim*,
+  not a weaker convenience, since a fixed question bank is enumerable and
+  enumerating it is the attack the LLM path exists to defeat.
+- **The pipeline has been run end to end on real recordings.** 7 speakers ×
+  14 utterances, transcribed with `large-v3` (8.6% WER on the new three),
+  tagged with `gemini-3.1-flash-lite`. `paper/results/` holds the 4-speaker
+  run; `data/corpus_v2` is the 7-speaker corpus.
 - **The run is correctly marked unreportable, on four counts**, and one of them
   matters more than the rest — see §5.2.4 of `KAVACH_Project_Idea.md`. The
   Tamil share per speaker is 0.69 / 0.03 / 0.90 / 0.63, which looks like a
@@ -40,8 +47,15 @@ Neither of these depends on the script, so both survive into the paper:
 git clone https://github.com/PremKxmar/speech.git
 cd speech
 pip install -r requirements-core.txt
-pytest                    # expect 891 passed
+pytest                    # expect 923 passed
 ```
+
+The suite reaches no network and loads no checkpoint. Two autouse fixtures in
+`tests/conftest.py` enforce that — `offline_by_default` for model checkpoints
+and `no_live_llm_calls` for provider keys. Both exist for the same reason: a
+suite whose behaviour changes when an unrelated `pip install` or a `.env` file
+appears is testing the machine, not a configuration. Opt in with
+`@pytest.mark.models` or `@pytest.mark.llm`.
 
 **Python 3.10+ is required, and it is not optional.** The code uses
 `dataclass(slots=True)`; on 3.9 every test file fails at collection with
@@ -136,15 +150,23 @@ The pipeline is finished. Everything below needs recordings, not code.
 | §5.1 headline claim, any CSBG number | **free-speech** sessions — scripted speech makes the CSBG a script classifier |
 | §5.3 cross-session stability | a **second session** per speaker |
 | the knowledge branch (scored 0 of 720 trials) | a second session — it needs the claimed speaker's enrolled answer to the probe's prompt, which a within-session split never provides |
-| a stable EER | more speakers; at 4 the split leaves 2 dev / 2 test and every row is flagged `[!]` |
+| a stable EER | more speakers; 7 now, which leaves 3 dev / 4 test — better than 4 and still thin |
 | Track 1 word-level LID accuracy | a bilingual labelling `data/goldset_v1.tsv` (1143 tokens, 20 utterances, 4 speakers; re-export smaller with `--utterances 6`) |
-| any `RECORDED` provenance claim | `data/consent_register.csv` — every row is still PENDING |
+| any `RECORDED` provenance claim | `data/consent_register.csv` — every row is still PENDING, and S05–S07 have no row yet |
 
 Ingest free speech with `python -m kavach.ingest --no-reference-transcripts`;
 that is what makes the manifest `RECORDED` rather than `SCRIPTED`.
 
 Run `python -m kavach.inspect_corpus --manifest ... --acoustic` on any folder
 that arrives from someone else, **before** ingesting it.
+
+**Never re-emit `data/speakers.csv` over the existing one.** `--emit-template`
+numbers folders alphabetically, so on the seven-folder tree it renames
+`BaveshRaamS` from S04 to S01 and shuffles the rest. Speaker ids are the join
+key for the consent register, the corpus manifest and every recorded result, so
+that rename silently reattributes recordings to the wrong people — including
+their consent status. Append rows by hand instead; the ids already assigned are
+load-bearing.
 
 ### 2. Wire the real branches into the experiment runner — DONE
 
