@@ -380,6 +380,33 @@ Still open:
     Overview printed invented figures. **Run the UI against a degraded backend
     before demoing it**, not just against a healthy one.
 
+13. **A lazy `__getattr__` must not reach its own submodule with `from . import
+    x`.** Before the import machinery will load a submodule it asks
+    `hasattr(pkg, "x")`, which re-enters the hook — RecursionError, not an
+    import. `kavach.api` had this on the path a server start-up depends on, and
+    891 tests passed over it because the shim was `# pragma: no cover`. Use
+    `importlib.import_module`. Relatedly: do not re-export a name a submodule
+    already owns (`app`), because importing the submodule rebinds it and the
+    meaning then depends on import order.
+
+14. **A silent ASR failure looks like data; an empty one does not.** Whisper
+    loops, emitting one plausible fragment for sixty tokens. Every copy lands
+    in the same semantic class and is counted as a real language choice, so the
+    speaker's most confident CSBG cell is built from a word nobody said. Only
+    the tagger's alignment check caught the first one, and only by luck of
+    token count. `Transcript.repetition_loop` checks for it now.
+
+15. **Never re-emit `data/speakers.csv` with `--emit-template`.** It numbers
+    folders alphabetically, so on the seven-folder tree `BaveshRaamS` moves
+    from S04 to S01 and the rest shuffle. Speaker ids join the consent
+    register, the manifest and every recorded result — that rename
+    reattributes recordings, and their consent status, to the wrong people.
+
+16. **A test that patches a class instead of an instance poisons the session.**
+    `type(asr).model = property(...)` in a new ASR test took down an unrelated
+    numeral-suppression test three classes away. Set the instance's private
+    backing field, or use `monkeypatch`.
+
 ---
 
 ## Standing instructions from the user
