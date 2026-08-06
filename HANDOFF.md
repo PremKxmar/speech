@@ -8,21 +8,39 @@ things stand and what is left.
 
 ## Current state
 
-- **600 tests passing**, offline, in about 36 seconds.
+- **891 tests passing**, offline, in about 46 seconds.
 - Working tree clean, everything pushed to `PremKxmar/speech.git`.
-- Backend runs and serves the UI. **The frontend has now been run against it**,
-  all eight pages render, and `tsc --noEmit` is clean. Three bugs that only
-  appear against a real backend were found and fixed — see §5.6–5.8 of
-  PROJECT.md.
-- The corpus layer, the figures, and the experiment runner all exist. One
-  command produces every table and figure.
-- **No human speech has been recorded.** Every number in the repo is synthetic.
+- Backend runs and serves the UI. All eight pages render, `tsc --noEmit` is
+  clean, and the Graph Explorer now draws the SKG as well as the CSBG.
+- **The pipeline has been run end to end on real recordings.** 4 speakers ×
+  14 utterances, transcribed with `large-v3`, tagged with
+  `gemini-3.1-flash-lite`: 2551 tokens, all 21 semantic classes populated,
+  zero guessed. `paper/results/` is that run's output and is committed.
+- **The run is correctly marked unreportable, on four counts**, and one of them
+  matters more than the rest — see §5.2.4 of `KAVACH_Project_Idea.md`. The
+  Tamil share per speaker is 0.69 / 0.03 / 0.90 / 0.63, which looks like a
+  spectacular separation and is an artifact: each speaker read a *different*
+  script, and speaker B's is English-dominant. **On this corpus a CSBG is a
+  script classifier.** Free-speech sessions are not an improvement to the
+  corpus, they are the corpus.
+
+### What the first run does establish
+
+Neither of these depends on the script, so both survive into the paper:
+
+- Word-level LID and semantic tagging work on real code-mixed Tamil ASR
+  output. `large-v3` transcripts track the reference scripts close to word for
+  word; four `U+FFFD` characters across 56 utterances are the only artifact.
+- **37 tokens were English that Whisper wrote in Tamil script** — `மாணிங்`,
+  `ஏவினிங்`, `நைட்டுக்கு`, `யூஸ்வலி`, `சிக்ஸ்`, `தெட்டிக்கு`,
+  `பஸ்டாப்புக்கு`, `போன்ல` — recovered rather than recorded as Tamil choices
+  nobody made. `kavach.inspect_corpus --translit` lists them.
 
 ```bash
 git clone https://github.com/PremKxmar/speech.git
 cd speech
 pip install -r requirements-core.txt
-pytest                    # expect 600 passed
+pytest                    # expect 891 passed
 ```
 
 **Python 3.10+ is required, and it is not optional.** The code uses
@@ -108,6 +126,25 @@ impostor CSBG scores separate at all on real speakers?** With one session each,
 `--within-session` scores the pilot and stamps the run unreportable, which is
 the right trade for a smoke test. §12 of `KAVACH_Project_Idea.md` is the
 fallback paper if the answer is no, and it is a respectable one.
+
+### 1a. What is blocked on data, and only on data
+
+The pipeline is finished. Everything below needs recordings, not code.
+
+| Blocked | Unblocked by |
+|---|---|
+| §5.1 headline claim, any CSBG number | **free-speech** sessions — scripted speech makes the CSBG a script classifier |
+| §5.3 cross-session stability | a **second session** per speaker |
+| the knowledge branch (scored 0 of 720 trials) | a second session — it needs the claimed speaker's enrolled answer to the probe's prompt, which a within-session split never provides |
+| a stable EER | more speakers; at 4 the split leaves 2 dev / 2 test and every row is flagged `[!]` |
+| Track 1 word-level LID accuracy | a bilingual labelling `data/goldset_v1.tsv` (1143 tokens, 20 utterances, 4 speakers; re-export smaller with `--utterances 6`) |
+| any `RECORDED` provenance claim | `data/consent_register.csv` — every row is still PENDING |
+
+Ingest free speech with `python -m kavach.ingest --no-reference-transcripts`;
+that is what makes the manifest `RECORDED` rather than `SCRIPTED`.
+
+Run `python -m kavach.inspect_corpus --manifest ... --acoustic` on any folder
+that arrives from someone else, **before** ingesting it.
 
 ### 2. Wire the real branches into the experiment runner — DONE
 
