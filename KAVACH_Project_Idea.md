@@ -347,18 +347,24 @@ The reportable version of this row needs cross-session probes and enough speaker
 
 #### 5.2.4 The scripted pilot separates speakers for the wrong reason — measured
 
-First end-to-end run on the pilot: 4 speakers x 14 utterances, one session each, 2551 tokens tagged by `gemini-3.1-flash-lite`, zero guessed. The pipeline works. The numbers do not mean what they appear to.
+End-to-end run on the pilot: **7 speakers x 14 utterances**, one session each, 4395 tokens tagged by `gemini-3.1-flash-lite`, zero guessed. The pipeline works. The numbers do not mean what they appear to.
 
-Tamil share of choice tokens, per speaker: **0.69, 0.03, 0.90, 0.63**. A spread of 0.87 looks like a spectacular result and is an artifact of the elicitation design. Each speaker reads a *different* script (`SpeakerRecord.script_id` A-D), and those scripts differ in language balance — speaker B's is English-dominant, with Tamil surviving only in food and festival vocabulary (`idli`, `sambar`, `poriyal`, `kuzhambu`, `Pongal`, `kolam`, `paal`). B's FUNCTION_WORD class is 0.00 Tamil over 405 tokens, which is the correct answer for someone reading English prose and tells you nothing about how they speak.
+Tamil share of choice tokens, per speaker: **0.69, 0.03, 0.90, 0.63, 0.05, 0.03, 0.06**. A spread of 0.87 looks like a spectacular result and is an artifact of the elicitation design. Each speaker reads a *different* script (`SpeakerRecord.script_id`), and those scripts differ in language balance — four of the seven are English-dominant, with Tamil surviving only in food and festival vocabulary (`idli`, `sambar`, `poriyal`, `kuzhambu`, `Pongal`, `kolam`, `paal`). Speaker S02's FUNCTION_WORD class is 0.00 Tamil over 405 tokens, which is the correct answer for someone reading English prose and tells you nothing about how they speak.
 
 So on this corpus a CSBG is a script classifier. `Corpus.reportability` already blocks any §5.1 claim on SCRIPTED provenance, and this is the magnitude of what it is blocking: separation that would otherwise look like the headline result. **Free-speech sessions are not an improvement to the corpus, they are the corpus.**
 
+**And that separation does not convert into verification accuracy.** Run with `--real-branches --within-session`, the CSBG alone scores **26.32% EER [15.79–42.11]** against 50% for guessing, and no veto floor bought any FAR reduction inside the 2% FRR budget. This is the more useful half of the finding, and it cuts against the optimistic reading of the spread: a per-speaker aggregate can differ enormously while carrying almost nothing per probe, and verification only ever sees one probe. Anyone quoting the 0.87 spread as evidence the idea works should quote this row in the same breath.
+
+The acoustic branch reads **0.00% EER** on the same run, which is equally not a result: enrolment and probe come from the same sitting, so it is measuring how well ECAPA memorises one microphone, one codec and one room. Both numbers need a second session before either means anything.
+
 Two things are worth keeping from the run anyway, because neither depends on the script:
 
-- **Word-level LID and semantic tagging work on real code-mixed Tamil ASR output.** All 21 classes populated, 0 guessed tokens over 2551.
+- **Word-level LID and semantic tagging work on real code-mixed Tamil ASR output.** All 21 classes populated, 0 guessed tokens over 4395.
 - **37 tokens were English that Whisper wrote in Tamil script**, recovered by the confidence override rather than recorded as Tamil choices the speaker never made: `மாணிங்` (morning), `ஏவினிங்` (evening), `நைட்டுக்கு` (night), `யூஸ்வலி` (usually), `சிக்ஸ்` (six), `தெட்டிக்கு` (thirty), `பஸ்டாப்புக்கு` (bus stop), `போன்ல` (phone), `யூஸ்` (use). They concentrate in TIME_DATE (7), ACTION_VERB (6) and QUANTITY_MEASURE (4). `kavach.inspect_corpus --translit` lists them for checking; a wrong entry there is an English label on a word genuinely spoken in Tamil, which is the same bias pointing the other way.
 
-The ASR itself came out well: `large-v3` transcripts track the reference scripts close to word for word, with four `U+FFFD` replacement characters across 56 utterances as the only visible artifact.
+The ASR came out well where it worked: **median WER 5.3%, mean 9.4%** over the 57 utterances that have both a reference and a usable transcript. Quote the median. The mean is dragged by two utterances where the speaker paraphrased the script instead of reading it, which is a deviation from the protocol rather than an ASR error, and WER cannot tell the two apart.
+
+It also failed in a way worth stating plainly, because it is invisible in that number: **on 2 of 98 utterances Whisper translated the Tamil into English instead of transcribing it.** `CODE_MIX_PROMPT` exists to prevent exactly this and is a hint, not a guarantee. The output is fluent, correct English, so nothing downstream objects — the utterance simply enters the graph as a speaker who chose English for every token. One was recovered by re-decoding; the other returned zero Tamil on three attempts and is excluded from the corpus with its reason recorded, which is why the run reports 97 usable utterances rather than 98. `Transcript.looks_translated()` now catches this at transcription time and, deliberately, without needing a reference — the free-speech sessions this project depends on have none.
 
 ### 5.3 CSBG stability analysis (a strong secondary result)
 > **How much code-switched speech does a speaker need before their CSBG converges?**

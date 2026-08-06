@@ -25,11 +25,22 @@ things stand and what is left.
   run; `data/corpus_v2` is the 7-speaker corpus.
 - **The run is correctly marked unreportable, on four counts**, and one of them
   matters more than the rest — see §5.2.4 of `KAVACH_Project_Idea.md`. The
-  Tamil share per speaker is 0.69 / 0.03 / 0.90 / 0.63, which looks like a
-  spectacular separation and is an artifact: each speaker read a *different*
-  script, and speaker B's is English-dominant. **On this corpus a CSBG is a
-  script classifier.** Free-speech sessions are not an improvement to the
-  corpus, they are the corpus.
+  Tamil share per speaker is 0.69 / 0.03 / 0.90 / 0.63 / 0.05 / 0.03 / 0.06,
+  which looks like a spectacular separation and is an artifact: each speaker
+  read a *different* script, and four of the seven scripts are
+  English-dominant. **On this corpus a CSBG is a script classifier.**
+  Free-speech sessions are not an improvement to the corpus, they are the
+  corpus.
+- **And the script separation does not even buy verification accuracy.** On the
+  seven-speaker run the CSBG alone scores **26.32% EER** — against 50% for
+  guessing. So the 0.87 spread that looks like the headline result separates
+  *speakers in aggregate* while carrying almost nothing per probe, which is
+  what verification actually needs. Anyone tempted to report the spread should
+  read that row first.
+- **ECAPA alone scores 0.00% EER on this run, and that is not a result
+  either.** Enrolment and probe come from the same sitting, so it measures how
+  well an embedding memorises one recording session — one microphone, one
+  codec, one room. A second session per speaker is what turns it into a number.
 
 ### What the first run does establish
 
@@ -308,6 +319,20 @@ Still open:
 ---
 
 ## Traps already hit — do not re-derive these
+
+0. **Whisper sometimes translates instead of transcribing, and it looks like
+   success.** `CODE_MIX_PROMPT` exists to prevent it and is a hint, not a
+   guarantee — it did not hold on 2 of the pilot's 98 utterances. The output is
+   fluent, correct English, so every downstream check passes and the utterance
+   enters the graph as a speaker who chose English for every token. That is a
+   fabricated language choice, not noise, and it lands on whichever speaker the
+   model found hardest, so it reads as a per-speaker finding. `Transcript
+   .looks_translated()` catches it at ASR time **without a reference
+   transcript** — which is the point, because free-speech sessions have none.
+   `kavach.inspect_corpus --translated` sweeps a manifest after the fact.
+   Neither test is absolute: one real case had 7 choice tokens and the other
+   scored 0.04 rather than 0.00, so the signal is distance from the *speaker's
+   own* baseline.
 
 1. **Do not set a threshold by reasoning about a score scale.** It has been wrong
    twice here (`CSBG_VETO_FLOOR`, `INTEGRITY_FLOOR`), both times because the
