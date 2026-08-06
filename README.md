@@ -71,8 +71,17 @@ For the full system:
 
 ```bash
 pip install -r requirements.txt           # torch, speechbrain, whisper, LaBSE
-export ANTHROPIC_API_KEY=...              # semantic tagging + challenge generation
+export GEMINI_API_KEY=...                 # tagging, challenges, attacker text
 ```
+
+**Any one provider key is enough, and a free one will do.** The three jobs that
+need a language model — semantic tagging, challenge generation and attacker
+text — all go through whichever provider has a key: `ANTHROPIC_API_KEY`
+(paid; adds prompt caching and the Batch API), `GEMINI_API_KEY` or
+`GROQ_API_KEY` (both free), or a local Ollama. Set `KAVACH_LLM_PROVIDER` to pin
+one when several are present. With no key at all the system still runs, but
+tagging degrades to rules — which is not corpus-grade — and challenges fall
+back to a fixed bank whose whole weakness is that it can be enumerated.
 
 Configuration is `backend/kavach/config.py`, overridable by environment
 variable with a `KAVACH_` prefix or a `.env` file. Every threshold in there is
@@ -136,12 +145,20 @@ with the consent register, not in this repository.
 
 ```bash
 python -m kavach.annotate --manifest data/corpus_v1/manifest.json --stage asr
-ANTHROPIC_API_KEY=... python -m kavach.annotate --manifest ... --stage tag
+python -m kavach.annotate --manifest ... --stage tag        # any provider key
 ```
 
 Two stages because they fail differently. ASR is slow, offline and free —
 about an hour for a 25-minute corpus on CPU, saved after every utterance so a
-crash costs one file. Tagging is seconds per utterance and needs a key.
+crash costs one file. Tagging is seconds per utterance and needs a key; add
+`--resume` after a failure so the utterances already tagged are not re-sent
+against the same rate limit that stopped the run.
+
+Read the ASR report before tagging. It lists any transcript Whisper
+**degenerated** on — a loop like `Rs.Ls.Rs.Rs.Rs.` where a price was spoken.
+Re-transcribe or drop those; do not annotate them. Every copy of the looped
+word is counted as a real language choice, so the speaker ends up with their
+most confident graph cell built from a word they never said.
 
 **Without a key the tagging stage is not usable output.** `lid.rules` resolves
 *language* from script evidence and decides no semantic class, so every token

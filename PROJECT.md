@@ -511,7 +511,9 @@ Useful environment variables (all prefixed `KAVACH_`):
 | `KAVACH_OFFLINE=1` | Load no model checkpoints; exercise degraded mode deliberately |
 | `KAVACH_WHISPER_MODEL=small` | Smaller ASR checkpoint (default `large-v3`, ~3 GB) |
 | `KAVACH_DEMO_REVEAL_ANSWERS=1` | Populate `expectedAnswerEntity`. **Demos only.** |
-| `ANTHROPIC_API_KEY` | Enables LLM tagging and challenge generation |
+| `ANTHROPIC_API_KEY` | Enables LLM tagging, challenges and attacker text; adds prompt caching and the Batch API |
+| `GEMINI_API_KEY` / `GROQ_API_KEY` | The same three jobs on a free tier. Any one key is sufficient |
+| `KAVACH_LLM_PROVIDER` | Pin one provider when several keys are present (default: first available, Anthropic preferred) |
 
 ---
 
