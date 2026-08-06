@@ -1,8 +1,8 @@
-# Experiment run 2026-08-05T23:29:53+00:00
+# Experiment run 2026-08-06T00:05:19+00:00
 
 **These numbers are NOT reportable.**
 
-- commit `0663a31b65af`
+- commit `036f45f53413` **(working tree dirty)**
 - python 3.11.15 on macOS-26.6-arm64-arm-64bit
 - corpus `corpus_v1` (SCRIPTED), 4 speakers, 56 utterances
 - seed 0, dev fraction 0.4, 500 bootstrap resamples
